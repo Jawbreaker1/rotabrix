@@ -1,0 +1,808 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C0FB34E82E8036DF00BC7785 /* Rotabrix Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C0FB34E72E8036DF00BC7785 /* Rotabrix Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C0FB34E92E8036DF00BC7785 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C0FB34DB2E8036DF00BC7785 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0FB34E62E8036DF00BC7785;
+			remoteInfo = "Rotabrix Watch App";
+		};
+		C0FB34F72E8036E000BC7785 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C0FB34DB2E8036DF00BC7785 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0FB34E62E8036DF00BC7785;
+			remoteInfo = "Rotabrix Watch App";
+		};
+		C0FB35012E8036E000BC7785 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C0FB34DB2E8036DF00BC7785 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0FB34E62E8036DF00BC7785;
+			remoteInfo = "Rotabrix Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C0FB350D2E8036E000BC7785 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				C0FB34E82E8036DF00BC7785 /* Rotabrix Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		C0FB34E12E8036DF00BC7785 /* Rotabrix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rotabrix.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0FB34E72E8036DF00BC7785 /* Rotabrix Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Rotabrix Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0FB34F62E8036E000BC7785 /* Rotabrix Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Rotabrix Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0FB35002E8036E000BC7785 /* Rotabrix Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Rotabrix Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0FB35222E8055F500BC7785 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		C0FB35252E80561300BC7785 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		C0FB35282E80563100BC7785 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C0FB35302E8062B300BC7785 /* Exceptions for "docs" folder in "Rotabrix Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				README.md,
+			);
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+		};
+		C0FB35332E80816200BC7785 /* Exceptions for "GameCore" folder in "Rotabrix Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Entities/BallNode.swift,
+				Entities/BrickNode.swift,
+				Entities/PaddleNode.swift,
+				GameConfig.swift,
+				GameHUDNode.swift,
+				GameScene.swift,
+				LevelGenerator.swift,
+				PhysicsCategory.swift,
+				PlayfieldOrientation.swift,
+				Visual/GradientBackgroundNode.swift,
+			);
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+		};
+		C0FB35432E80950E00BC7785 /* Exceptions for "Support" folder in "Rotabrix Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Clamp.swift,
+				SeededRandom.swift,
+			);
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+		};
+		C0FB35452E80952800BC7785 /* Exceptions for "App" folder in "Rotabrix Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ContentView.swift,
+				GameController.swift,
+			);
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		C0FB34EB2E8036DF00BC7785 /* Rotabrix Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Rotabrix Watch App";
+			sourceTree = "<group>";
+		};
+		C0FB34F92E8036E000BC7785 /* Rotabrix Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Rotabrix Watch AppTests";
+			sourceTree = "<group>";
+		};
+		C0FB35032E8036E000BC7785 /* Rotabrix Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Rotabrix Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		C0FB351D2E8055D200BC7785 /* docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FB35302E8062B300BC7785 /* Exceptions for "docs" folder in "Rotabrix Watch App" target */,
+			);
+			path = docs;
+			sourceTree = "<group>";
+		};
+		C0FB352C2E805D9100BC7785 /* GameCore */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FB35332E80816200BC7785 /* Exceptions for "GameCore" folder in "Rotabrix Watch App" target */,
+			);
+			path = GameCore;
+			sourceTree = "<group>";
+		};
+		C0FB352D2E805DD900BC7785 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FB35452E80952800BC7785 /* Exceptions for "App" folder in "Rotabrix Watch App" target */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C0FB352E2E805DE800BC7785 /* Systems */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Systems;
+			sourceTree = "<group>";
+		};
+		C0FB352F2E805DF300BC7785 /* Support */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0FB35432E80950E00BC7785 /* Exceptions for "Support" folder in "Rotabrix Watch App" target */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C0FB34E42E8036DF00BC7785 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34F32E8036E000BC7785 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34FD2E8036E000BC7785 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C0FB34DA2E8036DF00BC7785 = {
+			isa = PBXGroup;
+			children = (
+				C0FB34EB2E8036DF00BC7785 /* Rotabrix Watch App */,
+				C0FB34F92E8036E000BC7785 /* Rotabrix Watch AppTests */,
+				C0FB35032E8036E000BC7785 /* Rotabrix Watch AppUITests */,
+				C0FB34E22E8036DF00BC7785 /* Products */,
+				C0FB351D2E8055D200BC7785 /* docs */,
+				C0FB35232E8055F500BC7785 /* Sources */,
+				C0FB35262E80561300BC7785 /* Tests */,
+				C0FB35282E80563100BC7785 /* README.md */,
+			);
+			sourceTree = "<group>";
+		};
+		C0FB34E22E8036DF00BC7785 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C0FB34E12E8036DF00BC7785 /* Rotabrix.app */,
+				C0FB34E72E8036DF00BC7785 /* Rotabrix Watch App.app */,
+				C0FB34F62E8036E000BC7785 /* Rotabrix Watch AppTests.xctest */,
+				C0FB35002E8036E000BC7785 /* Rotabrix Watch AppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C0FB35232E8055F500BC7785 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				C0FB352F2E805DF300BC7785 /* Support */,
+				C0FB352E2E805DE800BC7785 /* Systems */,
+				C0FB352D2E805DD900BC7785 /* App */,
+				C0FB352C2E805D9100BC7785 /* GameCore */,
+				C0FB35222E8055F500BC7785 /* README.md */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		C0FB35262E80561300BC7785 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				C0FB35252E80561300BC7785 /* README.md */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C0FB34E02E8036DF00BC7785 /* Rotabrix */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0FB350E2E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix" */;
+			buildPhases = (
+				C0FB34DF2E8036DF00BC7785 /* Resources */,
+				C0FB350D2E8036E000BC7785 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C0FB34EA2E8036DF00BC7785 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0FB352C2E805D9100BC7785 /* GameCore */,
+				C0FB352D2E805DD900BC7785 /* App */,
+				C0FB352E2E805DE800BC7785 /* Systems */,
+				C0FB352F2E805DF300BC7785 /* Support */,
+			);
+			name = Rotabrix;
+			packageProductDependencies = (
+			);
+			productName = Rotabrix;
+			productReference = C0FB34E12E8036DF00BC7785 /* Rotabrix.app */;
+			productType = "com.apple.product-type.application.watchapp2-container";
+		};
+		C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0FB350A2E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch App" */;
+			buildPhases = (
+				C0FB34E32E8036DF00BC7785 /* Sources */,
+				C0FB34E42E8036DF00BC7785 /* Frameworks */,
+				C0FB34E52E8036DF00BC7785 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C0FB34EB2E8036DF00BC7785 /* Rotabrix Watch App */,
+				C0FB351D2E8055D200BC7785 /* docs */,
+			);
+			name = "Rotabrix Watch App";
+			packageProductDependencies = (
+			);
+			productName = "Rotabrix Watch App";
+			productReference = C0FB34E72E8036DF00BC7785 /* Rotabrix Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C0FB34F52E8036E000BC7785 /* Rotabrix Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0FB35112E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch AppTests" */;
+			buildPhases = (
+				C0FB34F22E8036E000BC7785 /* Sources */,
+				C0FB34F32E8036E000BC7785 /* Frameworks */,
+				C0FB34F42E8036E000BC7785 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C0FB34F82E8036E000BC7785 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0FB34F92E8036E000BC7785 /* Rotabrix Watch AppTests */,
+			);
+			name = "Rotabrix Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "Rotabrix Watch AppTests";
+			productReference = C0FB34F62E8036E000BC7785 /* Rotabrix Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C0FB34FF2E8036E000BC7785 /* Rotabrix Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0FB35142E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch AppUITests" */;
+			buildPhases = (
+				C0FB34FC2E8036E000BC7785 /* Sources */,
+				C0FB34FD2E8036E000BC7785 /* Frameworks */,
+				C0FB34FE2E8036E000BC7785 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C0FB35022E8036E000BC7785 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C0FB35032E8036E000BC7785 /* Rotabrix Watch AppUITests */,
+			);
+			name = "Rotabrix Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "Rotabrix Watch AppUITests";
+			productReference = C0FB35002E8036E000BC7785 /* Rotabrix Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C0FB34DB2E8036DF00BC7785 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					C0FB34E02E8036DF00BC7785 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					C0FB34E62E8036DF00BC7785 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					C0FB34F52E8036E000BC7785 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = C0FB34E62E8036DF00BC7785;
+					};
+					C0FB34FF2E8036E000BC7785 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = C0FB34E62E8036DF00BC7785;
+					};
+				};
+			};
+			buildConfigurationList = C0FB34DE2E8036DF00BC7785 /* Build configuration list for PBXProject "Rotabrix" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C0FB34DA2E8036DF00BC7785;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C0FB34E22E8036DF00BC7785 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C0FB34E02E8036DF00BC7785 /* Rotabrix */,
+				C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */,
+				C0FB34F52E8036E000BC7785 /* Rotabrix Watch AppTests */,
+				C0FB34FF2E8036E000BC7785 /* Rotabrix Watch AppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C0FB34DF2E8036DF00BC7785 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34E52E8036DF00BC7785 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34F42E8036E000BC7785 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34FE2E8036E000BC7785 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C0FB34E32E8036DF00BC7785 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34F22E8036E000BC7785 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0FB34FC2E8036E000BC7785 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C0FB34EA2E8036DF00BC7785 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+			targetProxy = C0FB34E92E8036DF00BC7785 /* PBXContainerItemProxy */;
+		};
+		C0FB34F82E8036E000BC7785 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+			targetProxy = C0FB34F72E8036E000BC7785 /* PBXContainerItemProxy */;
+		};
+		C0FB35022E8036E000BC7785 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
+			targetProxy = C0FB35012E8036E000BC7785 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		C0FB35082E8036E000BC7785 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		C0FB35092E8036E000BC7785 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		C0FB350B2E8036E000BC7785 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		C0FB350C2E8036E000BC7785 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKWatchOnly = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		C0FB350F2E8036E000BC7785 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C0FB35102E8036E000BC7785 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		C0FB35122E8036E000BC7785 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "BirdDisk.Rotabrix-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rotabrix Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Rotabrix Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		C0FB35132E8036E000BC7785 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "BirdDisk.Rotabrix-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rotabrix Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Rotabrix Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		C0FB35152E8036E000BC7785 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "BirdDisk.Rotabrix-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Rotabrix Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		C0FB35162E8036E000BC7785 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DN6N22AR3X;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "BirdDisk.Rotabrix-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "Rotabrix Watch App";
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C0FB34DE2E8036DF00BC7785 /* Build configuration list for PBXProject "Rotabrix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0FB35082E8036E000BC7785 /* Debug */,
+				C0FB35092E8036E000BC7785 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C0FB350A2E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0FB350B2E8036E000BC7785 /* Debug */,
+				C0FB350C2E8036E000BC7785 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C0FB350E2E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0FB350F2E8036E000BC7785 /* Debug */,
+				C0FB35102E8036E000BC7785 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C0FB35112E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0FB35122E8036E000BC7785 /* Debug */,
+				C0FB35132E8036E000BC7785 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C0FB35142E8036E000BC7785 /* Build configuration list for PBXNativeTarget "Rotabrix Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0FB35152E8036E000BC7785 /* Debug */,
+				C0FB35162E8036E000BC7785 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C0FB34DB2E8036DF00BC7785 /* Project object */;
+}

@@ -1,6 +1,29 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
 DerivedData/
 build/
 *.xcworkspace/xcuserdata/
+*.xcuserdata/
 *.xcuserstate
-.DS_Store
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages
+Package.resolved
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# SwiftLint cache
+.swiftlint-cache
+
+# Misc
+*.swp
+*.swo
