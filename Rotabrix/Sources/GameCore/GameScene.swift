@@ -43,8 +43,34 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var isStartScreenActive = true
 
     private var lastUpdateTime: TimeInterval = 0
+    private var currentLevelNumber: Int = 1
+
+    private let backgroundPalettes: [[SKColor]] = [
+        [
+            SKColor(red: 0.02, green: 0.03, blue: 0.10, alpha: 1),
+            SKColor(red: 0.07, green: 0.18, blue: 0.32, alpha: 1),
+            SKColor(red: 0.13, green: 0.45, blue: 0.78, alpha: 0.85)
+        ],
+        [
+            SKColor(red: 0.05, green: 0.02, blue: 0.12, alpha: 1),
+            SKColor(red: 0.32, green: 0.00, blue: 0.36, alpha: 1),
+            SKColor(red: 0.82, green: 0.24, blue: 0.54, alpha: 0.85)
+        ],
+        [
+            SKColor(red: 0.01, green: 0.06, blue: 0.05, alpha: 1),
+            SKColor(red: 0.00, green: 0.35, blue: 0.25, alpha: 1),
+            SKColor(red: 0.42, green: 0.95, blue: 0.74, alpha: 0.85)
+        ],
+        [
+            SKColor(red: 0.06, green: 0.03, blue: 0.07, alpha: 1),
+            SKColor(red: 0.38, green: 0.15, blue: 0.06, alpha: 1),
+            SKColor(red: 0.94, green: 0.53, blue: 0.19, alpha: 0.9)
+        ]
+    ]
 
     weak var gameDelegate: GameSceneDelegate?
+
+    private let ballLaunchActionKey = "ballLaunchAction"
 
     private var portraitPlayfieldBounds: CGRect {
         let inset = GameConfig.playfieldInset
@@ -160,8 +186,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         levelGenerator.reset()
         dropLayer.removeAllChildren()
+        currentLevelNumber = 1
+        applyBackgroundPalette(forLevel: currentLevelNumber)
         loadNextLevel()
-        resetBall()
+        resetBall(launchAfter: GameConfig.ballLaunchDelay)
         setStartScreenPresentation(active: false)
     }
 
@@ -270,6 +298,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ball.position = CGPoint(x: 0, y: -currentPlayfieldBounds.height / 4)
         ball.zPosition = 6
         playfieldNode.addChild(ball)
+        ball.setTrailTarget(playfieldNode)
     }
 
     private func setupHUD() {
@@ -289,6 +318,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let baseSize = portraitPlayfieldBounds.size
         let layout = levelGenerator.nextLayout(for: baseSize, seed: GameConfig.levelSeedBase &+ UInt64(levelIndex))
         currentLayout = layout
+        currentLevelNumber = layout.levelNumber
+        applyBackgroundPalette(forLevel: currentLevelNumber)
         levelIndex = layout.levelNumber + 1
 
         let bounds = currentPlayfieldBounds
@@ -300,16 +331,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
-    private func resetBall() {
+    private func resetBall(launchAfter delay: TimeInterval = GameConfig.ballLaunchDelay, freezePhysics: Bool = false) {
         guard let body = ball.physicsBody else { return }
+
         body.velocity = .zero
 
+        let center = CGPoint(x: currentPlayfieldBounds.midX, y: currentPlayfieldBounds.midY)
+        let toCenter = CGVector(dx: center.x - paddle.position.x, dy: center.y - paddle.position.y)
+
+        let direction: CGVector
+        if toCenter.magnitude > 0.001 {
+            let inverse = 1 / toCenter.magnitude
+            direction = CGVector(dx: toCenter.dx * inverse, dy: toCenter.dy * inverse)
+        } else {
+            direction = orientationInteriorDirection()
+        }
+
         let offsetDistance = GameConfig.paddleSize.height + GameConfig.ballRadius * 2
-        let interiorDirection = orientationInteriorDirection()
-        let offset = CGVector(
-            dx: interiorDirection.dx * offsetDistance,
-            dy: interiorDirection.dy * offsetDistance
-        )
+        let offset = CGVector(dx: direction.dx * offsetDistance, dy: direction.dy * offsetDistance)
 
         ball.position = CGPoint(
             x: paddle.position.x + offset.dx,
@@ -317,14 +356,31 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         )
 
         clampBallWithinPlayfield()
+        ball.isHidden = false
 
-        run(.wait(forDuration: 0.45)) { [weak self] in
-            guard let self else { return }
+        if freezePhysics {
+            physicsWorld.speed = 0
+        }
+
+        removeAction(forKey: ballLaunchActionKey)
+
+        let launch = SKAction.run { [weak self] in
+            guard let self, let physicsBody = self.ball.physicsBody else { return }
+            if freezePhysics {
+                self.physicsWorld.speed = 1
+            }
             let angle = CGFloat.random(in: (.pi / 4)...(.pi * 3 / 4))
-            body.velocity = CGVector(
+            physicsBody.velocity = CGVector(
                 dx: cos(angle) * GameConfig.ballInitialSpeed,
                 dy: sin(angle) * GameConfig.ballInitialSpeed
             ).rotated(by: self.orientationBaseAngle())
+        }
+
+        if delay > 0 {
+            let wait = SKAction.wait(forDuration: delay)
+            run(.sequence([wait, launch]), withKey: ballLaunchActionKey)
+        } else {
+            run(launch, withKey: ballLaunchActionKey)
         }
     }
 
@@ -373,20 +429,33 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func checkLifeLoss() {
         guard let body = ball.physicsBody, lives > 0 else { return }
-        let position = ball.position
         let limit: CGFloat = 48
 
         let bounds = currentPlayfieldBounds
 
-        switch orientation {
-        case .bottom:
-            if position.y < bounds.minY - limit { loseLife() }
-        case .top:
-            if position.y > bounds.maxY + limit { loseLife() }
-        case .right:
-            if position.x > bounds.maxX + limit { loseLife() }
-        case .left:
-            if position.x < bounds.minX - limit { loseLife() }
+        let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
+        let localCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+
+        let edgePoint = playfieldNode.convert(localEdgeMid, to: self)
+        let centerPoint = playfieldNode.convert(localCenter, to: self)
+
+        let outwardDx = edgePoint.x - centerPoint.x
+        let outwardDy = edgePoint.y - centerPoint.y
+        let outwardLength = sqrt(outwardDx * outwardDx + outwardDy * outwardDy)
+
+        if outwardLength > 0 {
+            let unitX = outwardDx / outwardLength
+            let unitY = outwardDy / outwardLength
+
+            let ballPoint = playfieldNode.convert(ball.position, to: self)
+            let offsetX = ballPoint.x - edgePoint.x
+            let offsetY = ballPoint.y - edgePoint.y
+
+            let distanceBeyondEdge = offsetX * unitX + offsetY * unitY
+
+            if distanceBeyondEdge > limit {
+                loseLife()
+            }
         }
 
         body.velocity = body.velocity.limited(minSpeed: GameConfig.ballInitialSpeed * 0.75, maxSpeed: GameConfig.ballMaximumSpeed)
@@ -426,41 +495,103 @@ private func configureParallax(for rect: CGRect) {
         parallaxNode.removeAllChildren()
         starLayers.removeAll()
 
-        let layers: [(parallax: CGFloat, speed: CGFloat, alpha: CGFloat, color: SKColor)] = [
-            (0.25, 6, 0.4, SKColor(red: 0.30, green: 0.80, blue: 1.0, alpha: 1)),
-            (0.55, 10, 0.55, SKColor(red: 0.74, green: 0.35, blue: 1.0, alpha: 1)),
-            (1.0, 16, 0.7, SKColor(red: 1.0, green: 0.64, blue: 0.2, alpha: 1))
+        let layers: [(parallax: CGFloat, speed: CGFloat, alpha: CGFloat, colors: [SKColor], birthRate: CGFloat, scale: CGFloat)] = [
+            (
+                0.25,
+                26,
+                0.55,
+                [
+                    SKColor(white: 0.95, alpha: 1),
+                    SKColor(red: 1.0, green: 0.92, blue: 0.55, alpha: 1)
+                ],
+                14,
+                0.46
+            ),
+            (
+                0.55,
+                34,
+                0.65,
+                [
+                    SKColor(white: 0.95, alpha: 1),
+                    SKColor(red: 1.0, green: 0.8, blue: 0.55, alpha: 1),
+                    SKColor(red: 1.0, green: 0.55, blue: 0.45, alpha: 1)
+                ],
+                18,
+                0.54
+            ),
+            (
+                1.0,
+                42,
+                0.75,
+                [
+                    SKColor(white: 0.95, alpha: 1),
+                    SKColor(red: 1.0, green: 0.88, blue: 0.5, alpha: 1),
+                    SKColor(red: 1.0, green: 0.45, blue: 0.35, alpha: 1)
+                ],
+                24,
+                0.64
+            )
         ]
 
-        for (parallax, speed, alpha, color) in layers {
-            let layer = makeStarLayer(parallax: parallax, speed: speed, alpha: alpha, color: color, rect: rect)
+        for (index, entry) in layers.enumerated() {
+            let (parallax, speed, alpha, colors, birthRate, scale) = entry
+            let layer = makeStarLayer(
+                parallax: parallax,
+                speed: speed,
+                alpha: alpha,
+                colors: colors,
+                birthRate: birthRate,
+                baseScale: scale,
+                rect: rect
+            )
+            layer.zPosition = CGFloat(-4 + index)
             parallaxNode.addChild(layer)
             starLayers.append(layer)
         }
     }
 
-    private func makeStarLayer(parallax: CGFloat, speed: CGFloat, alpha: CGFloat, color: SKColor, rect: CGRect) -> SKEmitterNode {
+    private func makeStarLayer(
+        parallax: CGFloat,
+        speed: CGFloat,
+        alpha: CGFloat,
+        colors: [SKColor],
+        birthRate: CGFloat,
+        baseScale: CGFloat,
+        rect: CGRect
+    ) -> SKEmitterNode {
         let emitter = SKEmitterNode()
         emitter.particleTexture = Self.starTexture
-        emitter.particleBirthRate = 12 * parallax * 2
-        emitter.particleLifetime = 8 / max(parallax, 0.1)
+        emitter.particleBirthRate = birthRate
+        let absoluteSpeed = max(speed, 12)
+        let travelDistance = rect.height + 80
+        emitter.particleLifetime = travelDistance / absoluteSpeed
         emitter.particleAlpha = alpha
-        emitter.particleAlphaRange = 0.25
-        emitter.particleAlphaSpeed = -0.02
-        emitter.particleColor = color
+        emitter.particleAlphaRange = 0.28
+        emitter.particleAlphaSpeed = -0.08
+        emitter.particleColor = colors.first ?? SKColor(white: 0.95, alpha: 1)
         emitter.particleColorBlendFactor = 1
-        emitter.particleSpeed = -speed
-        emitter.particleSpeedRange = speed * 0.4
-        emitter.emissionAngleRange = .pi
-        emitter.particleScale = 0.15 + 0.1 * parallax
-        emitter.particleScaleRange = 0.08
-        emitter.particlePositionRange = CGVector(dx: rect.width, dy: rect.height)
-        emitter.position = .zero
-        emitter.advanceSimulationTime(1.5)
+        emitter.particleSpeed = absoluteSpeed
+        emitter.particleSpeedRange = absoluteSpeed * 0.12
+        emitter.emissionAngle = -.pi / 2
+        emitter.emissionAngleRange = .pi / 24
+        emitter.particleScale = baseScale + 0.18 * parallax
+        emitter.particleScaleRange = baseScale * 0.65
+        emitter.particleScaleSpeed = -0.01
+        emitter.particlePositionRange = CGVector(dx: rect.width + 40, dy: rect.height * 0.1)
+        emitter.position = CGPoint(x: 0, y: rect.height / 2 + 24)
+        emitter.advanceSimulationTime(Double(travelDistance / absoluteSpeed))
         emitter.particleBlendMode = .add
 
-        let drift = SKAction.move(by: CGVector(dx: 0, dy: 10 * parallax), duration: 2)
-        emitter.run(.repeatForever(.sequence([drift, drift.reversed()])))
+        if colors.count > 1 {
+            let count = colors.count - 1
+            let times = colors.enumerated().map { index, _ in
+                count == 0 ? 0.0 : Double(index) / Double(count)
+            }
+            let sequence = SKKeyframeSequence(keyframeValues: colors, times: times.map { NSNumber(value: $0) })
+            emitter.particleColorSequence = sequence
+        } else {
+            emitter.particleColorSequence = nil
+        }
 
         return emitter
     }
@@ -527,12 +658,20 @@ private func configureParallax(for rect: CGRect) {
         multiplier = 1
         streak = 0
         hud.update(score: score, multiplier: multiplier, lives: lives)
-        hud.showMessage(lives > 0 ? "Miss" : "Game Over")
 
         if lives <= 0 {
+            hud.showMessage("Game Over")
             gameOver()
         } else {
-            resetBall()
+            hud.showMessage(
+                "Ball Lost",
+                fontSize: GameConfig.ballLostMessageFontSize,
+                duration: GameConfig.ballRespawnDelayAfterMiss
+            )
+            resetBall(
+                launchAfter: GameConfig.ballRespawnDelayAfterMiss,
+                freezePhysics: true
+            )
         }
     }
 
@@ -542,6 +681,7 @@ private func configureParallax(for rect: CGRect) {
         rotationTimer = 0
         isRotationInProgress = false
         playfieldNode.removeAllActions()
+        removeAction(forKey: ballLaunchActionKey)
         ball.physicsBody?.velocity = .zero
         ball.removeAllActions()
         setStartScreenPresentation(active: true)
@@ -588,25 +728,20 @@ private func configureParallax(for rect: CGRect) {
         hud.update(score: score, multiplier: multiplier, lives: lives)
 
         guard let body = ball.physicsBody else { return }
-        let impact = ball.position - paddle.position
+        let ballScenePosition = playfieldNode.convert(ball.position, to: self)
+        let paddleScenePosition = playfieldNode.convert(paddle.position, to: self)
+        let contactVector = CGVector(
+            dx: ballScenePosition.x - paddleScenePosition.x,
+            dy: ballScenePosition.y - paddleScenePosition.y
+        )
+
+        let baseAngle = orientationBaseAngle()
+        let canonicalImpact = contactVector.rotated(by: -baseAngle)
+        let axisSign: CGFloat = orientation == .bottom ? 1 : -1
         let maxOffset = GameConfig.paddleSize.width / 2
-
-        let axisValue: CGFloat
-        switch orientation {
-        case .bottom:
-            axisValue = impact.x
-        case .top:
-            axisValue = -impact.x
-        case .right:
-            axisValue = -impact.y
-        case .left:
-            axisValue = impact.y
-        }
-
-        let normalized = max(-1, min(1, axisValue / maxOffset))
+        let normalized = (canonicalImpact.dx * axisSign / maxOffset).clamped(to: CGFloat(-1)...CGFloat(1))
         let speed = max(body.velocity.magnitude, GameConfig.ballInitialSpeed)
         let angleOffset = normalized * (.pi / 4)
-        let baseAngle = orientationBaseAngle()
         let newAngle = baseAngle + (.pi / 2) + angleOffset
         body.velocity = CGVector(dx: cos(newAngle) * speed, dy: sin(newAngle) * speed)
     }
@@ -615,8 +750,9 @@ private func configureParallax(for rect: CGRect) {
         hud.showMessage("Level \(levelIndex - 1) Clear")
         rotationInterval = max(6, rotationInterval * 0.9)
         run(.wait(forDuration: 1)) { [weak self] in
-            self?.loadNextLevel()
-            self?.resetBall()
+            guard let self else { return }
+            self.loadNextLevel()
+            self.resetBall(launchAfter: GameConfig.ballLaunchDelay)
         }
     }
 
@@ -628,19 +764,37 @@ private func configureParallax(for rect: CGRect) {
     }
 
     private func runExplosion(at point: CGPoint, explosive: Bool) {
-        let radius: CGFloat = explosive ? 48 : 24
+        let radius: CGFloat = explosive ? 76 : 42
         let pulse = SKShapeNode(circleOfRadius: radius)
         pulse.position = point
-        pulse.strokeColor = SKColor(red: 0.35, green: 0.95, blue: 1.0, alpha: 1)
-        pulse.lineWidth = 2
-        pulse.alpha = 0.6
+        pulse.strokeColor = SKColor(red: 1.0, green: 0.3, blue: 0.12, alpha: 0.55)
+        pulse.fillColor = SKColor(red: 1.0, green: 0.3, blue: 0.05, alpha: 0.2)
+        pulse.lineWidth = 2.4
+        pulse.alpha = 0.95
         pulse.zPosition = 15
+        pulse.blendMode = .add
         playfieldNode.addChild(pulse)
         pulse.run(.sequence([
             .group([
-                .scale(to: explosive ? 2.2 : 1.4, duration: 0.35),
-                .fadeOut(withDuration: 0.35)
+                .scale(to: explosive ? 4.5 : 2.9, duration: 0.75),
+                .fadeOut(withDuration: 0.75)
             ]),
+            .removeFromParent()
+        ]))
+
+        let sparkEmitter = makeExplosionEmitter(big: explosive)
+        sparkEmitter.position = point
+        playfieldNode.addChild(sparkEmitter)
+        sparkEmitter.run(.sequence([
+            .wait(forDuration: sparkEmitter.particleLifetime * 1.4),
+            .removeFromParent()
+        ]))
+
+        let shardEmitter = makeShardEmitter(big: explosive)
+        shardEmitter.position = point
+        playfieldNode.addChild(shardEmitter)
+        shardEmitter.run(.sequence([
+            .wait(forDuration: shardEmitter.particleLifetime * 1.2),
             .removeFromParent()
         ]))
     }
@@ -718,6 +872,79 @@ private func configureParallax(for rect: CGRect) {
         ball?.isHidden = hidden
         boundaryNode?.isHidden = hidden
     }
+
+    private func paletteForLevel(_ level: Int) -> [SKColor] {
+        guard !backgroundPalettes.isEmpty else { return GradientBackgroundNode.defaultPalette }
+        let index = (level - 1).positiveModulo(of: backgroundPalettes.count)
+        return backgroundPalettes[index]
+    }
+
+    private func applyBackgroundPalette(forLevel level: Int) {
+        guard let background = backgroundNode else { return }
+        background.updatePalette(paletteForLevel(level))
+    }
+
+    private func makeExplosionEmitter(big: Bool) -> SKEmitterNode {
+        let emitter = SKEmitterNode()
+        emitter.particleTexture = Self.starTexture
+        emitter.numParticlesToEmit = big ? 96 : 62
+        emitter.particleBirthRate = big ? 780 : 520
+        emitter.particleLifetime = big ? 1.1 : 0.8
+        emitter.particleLifetimeRange = big ? 0.35 : 0.22
+        emitter.particleAlpha = 1.0
+        emitter.particleAlphaRange = 0.25
+        emitter.particleAlphaSpeed = -2.8
+        emitter.particleColorBlendFactor = 1
+        emitter.particleColorSequence = SKKeyframeSequence(keyframeValues: [
+            SKColor(red: 1.0, green: 0.95, blue: 0.75, alpha: 1),
+            SKColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1),
+            SKColor(red: 0.65, green: 0.1, blue: 0.03, alpha: 1)
+        ], times: [0, 0.4, 1])
+        emitter.particleSpeed = big ? 420 : 300
+        emitter.particleSpeedRange = big ? 220 : 160
+        emitter.emissionAngleRange = .pi * 2
+        emitter.particleScale = big ? 0.68 : 0.52
+        emitter.particleScaleRange = big ? 0.42 : 0.32
+        emitter.particleScaleSpeed = -1.4
+        emitter.particleRotationRange = .pi * 2
+        emitter.particleRotationSpeed = .pi * 1.9
+        emitter.particleBlendMode = .add
+        emitter.zPosition = 16
+        emitter.particlePositionRange = CGVector(dx: 6, dy: 6)
+        return emitter
+    }
+
+    private func makeShardEmitter(big: Bool) -> SKEmitterNode {
+        let emitter = SKEmitterNode()
+        emitter.particleTexture = Self.starTexture
+        emitter.particleBirthRate = big ? 280 : 190
+        emitter.numParticlesToEmit = big ? 28 : 18
+        emitter.particleLifetime = big ? 1.4 : 1.0
+        emitter.particleLifetimeRange = big ? 0.45 : 0.3
+        emitter.particleAlpha = 0.9
+        emitter.particleAlphaRange = 0.15
+        emitter.particleAlphaSpeed = -0.95
+        emitter.particleColorBlendFactor = 1
+        emitter.particleColorSequence = SKKeyframeSequence(keyframeValues: [
+            SKColor(red: 1.0, green: 0.9, blue: 0.6, alpha: 1),
+            SKColor(red: 1.0, green: 0.35, blue: 0.25, alpha: 1),
+            SKColor(red: 0.35, green: 0.05, blue: 0.02, alpha: 0.8)
+        ], times: [0, 0.5, 1])
+        emitter.particleSpeed = big ? 520 : 340
+        emitter.particleSpeedRange = big ? 160 : 120
+        emitter.emissionAngleRange = .pi * 2
+        emitter.particleScale = big ? 0.38 : 0.28
+        emitter.particleScaleRange = big ? 0.22 : 0.18
+        emitter.particleScaleSpeed = -0.45
+        emitter.particleRotationRange = .pi * 2
+        emitter.particleRotationSpeed = .pi
+        emitter.particleBlendMode = .add
+        emitter.xAcceleration = 0
+        emitter.yAcceleration = -420
+        emitter.particlePositionRange = CGVector(dx: 4, dy: 4)
+        emitter.zPosition = 16
+        return emitter
+    }
 }
 
 private extension CGFloat {
@@ -754,5 +981,13 @@ private extension CGPoint {
 
     func distance(to point: CGPoint) -> CGFloat {
         hypot(point.x - x, point.y - y)
+    }
+}
+
+private extension Int {
+    func positiveModulo(of modulus: Int) -> Int {
+        guard modulus > 0 else { return 0 }
+        let remainder = self % modulus
+        return remainder >= 0 ? remainder : remainder + modulus
     }
 }

@@ -3,6 +3,7 @@ import SpriteKit
 final class BrickNode: SKShapeNode {
     let descriptor: BrickDescriptor
     private(set) var hitPoints: Int
+    private let auraNode: SKShapeNode
     var scoreValue: Int { descriptor.kind.baseScore }
 
     var isExplosive: Bool {
@@ -22,6 +23,7 @@ final class BrickNode: SKShapeNode {
         let size = descriptor.frame.size
         let rect = CGRect(origin: CGPoint(x: -size.width / 2, y: -size.height / 2), size: size)
         let path = CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil)
+        self.auraNode = BrickNode.makeAuraNode(for: rect)
 
         super.init()
 
@@ -33,6 +35,7 @@ final class BrickNode: SKShapeNode {
         name = "brick"
         zPosition = 2
 
+        addChild(auraNode)
         updateFillColor()
 
         physicsBody = SKPhysicsBody(rectangleOf: size)
@@ -54,7 +57,34 @@ final class BrickNode: SKShapeNode {
     }
 
     private func updateFillColor() {
-        fillColor = BrickNode.fillColor(for: descriptor.kind, remaining: hitPoints)
+        let color = BrickNode.fillColor(for: descriptor.kind, remaining: hitPoints)
+        fillColor = color
+        updateAuraColor(using: color)
+    }
+
+    private func updateAuraColor(using color: SKColor) {
+        auraNode.fillColor = color.withAlphaComponent(0.23)
+        auraNode.strokeColor = color.withAlphaComponent(0.48)
+        auraNode.lineWidth = 1.0
+        auraNode.glowWidth = 2.2
+        auraNode.blendMode = .add
+    }
+
+    private static func makeAuraNode(for rect: CGRect) -> SKShapeNode {
+        let inset: CGFloat = -1.7
+        let auraRect = rect.insetBy(dx: inset, dy: inset)
+        let path = CGPath(roundedRect: auraRect, cornerWidth: 6, cornerHeight: 6, transform: nil)
+        let node = SKShapeNode(path: path)
+        node.zPosition = -1
+        node.alpha = 0.88
+        node.isAntialiased = true
+        node.fillColor = .clear
+        node.strokeColor = .clear
+        node.lineJoin = .round
+        node.lineCap = .round
+        node.blendMode = .add
+        node.glowWidth = 0
+        return node
     }
 
     private static func fillColor(for kind: BrickDescriptor.Kind, remaining: Int) -> SKColor {

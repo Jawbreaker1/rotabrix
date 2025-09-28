@@ -2,8 +2,11 @@ import SpriteKit
 import CoreGraphics
 
 final class GradientBackgroundNode: SKSpriteNode {
-    init(size: CGSize) {
-        let texture = GradientBackgroundNode.makeTexture(size: size)
+    private var palette: [SKColor]
+
+    init(size: CGSize, palette: [SKColor] = GradientBackgroundNode.defaultPalette) {
+        self.palette = palette
+        let texture = GradientBackgroundNode.makeTexture(size: size, palette: palette)
         super.init(texture: texture, color: .clear, size: size)
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
         zPosition = -60
@@ -17,19 +20,23 @@ final class GradientBackgroundNode: SKSpriteNode {
     func updateSize(_ size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
         self.size = size
-        self.texture = GradientBackgroundNode.makeTexture(size: size)
+        self.texture = GradientBackgroundNode.makeTexture(size: size, palette: palette)
     }
 
-    private static func makeTexture(size: CGSize) -> SKTexture {
+    func updatePalette(_ colors: [SKColor]) {
+        let filtered = colors.isEmpty ? GradientBackgroundNode.defaultPalette : colors
+        palette = filtered
+        self.texture = GradientBackgroundNode.makeTexture(size: size, palette: palette)
+    }
+
+    private static func makeTexture(size: CGSize, palette: [SKColor]) -> SKTexture {
         let width = max(Int(size.width), 2)
         let height = max(Int(size.height), 2)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let colors = [
-            SKColor(red: 0.01, green: 0.02, blue: 0.09, alpha: 1).cgColor,
-            SKColor(red: 0.09, green: 0.16, blue: 0.36, alpha: 1).cgColor,
-            SKColor(red: 0.00, green: 0.30, blue: 0.55, alpha: 1).withAlphaComponent(0.9).cgColor
-        ] as CFArray
-        let locations: [CGFloat] = [0.0, 0.6, 1.0]
+        let stops = palette.isEmpty ? defaultPalette : palette
+        let colors = stops.map { $0.cgColor } as CFArray
+        let step = stops.count > 1 ? 1.0 / CGFloat(stops.count - 1) : 1.0
+        let locations: [CGFloat] = stops.enumerated().map { index, _ in CGFloat(index) * step }
         guard let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: locations) else {
             return SKTexture()
         }
@@ -61,4 +68,10 @@ final class GradientBackgroundNode: SKSpriteNode {
 
         return SKTexture()
     }
+
+    static let defaultPalette: [SKColor] = [
+        SKColor(red: 0.01, green: 0.02, blue: 0.09, alpha: 1),
+        SKColor(red: 0.09, green: 0.16, blue: 0.36, alpha: 1),
+        SKColor(red: 0.00, green: 0.30, blue: 0.55, alpha: 0.9)
+    ]
 }

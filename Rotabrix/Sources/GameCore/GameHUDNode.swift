@@ -73,8 +73,9 @@ final class GameHUDNode: SKNode {
         messageLabel.position = CGPoint(x: centerX, y: rect.midY)
     }
 
-    func showMessage(_ text: String, duration: TimeInterval = 1.2) {
+    func showMessage(_ text: String, fontSize: CGFloat = 16, duration: TimeInterval = 1.2) {
         messageLabel.removeAllActions()
+        messageLabel.fontSize = fontSize
         messageLabel.text = text
         messageLabel.run(.sequence([
             .fadeAlpha(to: 1, duration: 0.15),

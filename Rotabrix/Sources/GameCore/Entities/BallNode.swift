@@ -1,14 +1,23 @@
 import SpriteKit
 
 final class BallNode: SKShapeNode {
+    private var trailEmitter: SKEmitterNode?
+
     init(radius: CGFloat) {
         super.init()
-        let path = CGPath(ellipseIn: CGRect(origin: CGPoint(x: -radius, y: -radius), size: CGSize(width: radius * 2, height: radius * 2)), transform: nil)
+
+        let diameter = radius * 2
+        let path = CGPath(ellipseIn: CGRect(origin: CGPoint(x: -radius, y: -radius), size: CGSize(width: diameter, height: diameter)), transform: nil)
         self.path = path
         fillColor = SKColor.white
         strokeColor = SKColor.clear
-        glowWidth = 4
+        glowWidth = 1.5
         name = "ball"
+
+        addChild(BallNode.makeHaloNode(radius: radius))
+        let trail = BallNode.makeTrailEmitter(radius: radius)
+        addChild(trail)
+        trailEmitter = trail
 
         physicsBody = SKPhysicsBody(circleOfRadius: radius)
         physicsBody?.allowsRotation = false
@@ -40,4 +49,89 @@ final class BallNode: SKShapeNode {
             body.velocity = CGVector(dx: v.dx * scale, dy: v.dy * scale)
         }
     }
+
+    func setTrailTarget(_ node: SKNode?) {
+        trailEmitter?.targetNode = node
+    }
+}
+
+private extension BallNode {
+    static func makeHaloNode(radius: CGFloat) -> SKNode {
+        let haloRadius = radius * 1.45
+        let node = SKShapeNode(circleOfRadius: haloRadius)
+        let glowColor = SKColor(red: 1.0, green: 0.2, blue: 0.35, alpha: 1)
+        node.fillColor = glowColor.withAlphaComponent(0.22)
+        node.strokeColor = glowColor.withAlphaComponent(0.4)
+        node.lineWidth = 1.2
+        node.zPosition = -1
+        node.glowWidth = 5.2
+        node.alpha = 0.9
+        node.blendMode = .add
+        return node
+    }
+
+    static func makeTrailEmitter(radius: CGFloat) -> SKEmitterNode {
+        let emitter = SKEmitterNode()
+        emitter.particleTexture = BallNode.trailTexture
+        emitter.particleBirthRate = 260
+        emitter.particleLifetime = 0.6
+        emitter.particleLifetimeRange = 0.22
+        emitter.particlePositionRange = CGVector(dx: radius * 0.85, dy: radius * 0.85)
+        emitter.particleSpeed = 0
+        emitter.particleSpeedRange = 32
+        emitter.particleAlpha = 0.5
+        emitter.particleAlphaRange = 0.18
+        emitter.particleAlphaSpeed = -0.9
+        emitter.particleScale = 0.42
+        emitter.particleScaleRange = 0.22
+        emitter.particleScaleSpeed = -0.45
+        emitter.particleColor = SKColor(red: 0.18, green: 0.95, blue: 0.98, alpha: 1)
+        emitter.particleColorBlendFactor = 1
+        emitter.emissionAngleRange = .pi
+        emitter.particleBlendMode = .add
+        emitter.zPosition = -2
+        emitter.targetNode = nil
+        emitter.advanceSimulationTime(0.35)
+        return emitter
+    }
+
+    static let trailTexture: SKTexture = {
+        let size = CGSize(width: 10, height: 10)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let width = Int(size.width)
+        let height = Int(size.height)
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else { return SKTexture() }
+
+        let gradientColors = [
+            SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.9).cgColor,
+            SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.0).cgColor
+        ] as CFArray
+        let locations: [CGFloat] = [0, 1]
+        guard let gradient = CGGradient(colorsSpace: colorSpace, colors: gradientColors, locations: locations) else {
+            return SKTexture()
+        }
+
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        context.drawRadialGradient(
+            gradient,
+            startCenter: center,
+            startRadius: 0,
+            endCenter: center,
+            endRadius: size.width / 2,
+            options: [.drawsAfterEndLocation]
+        )
+
+        guard let cgImage = context.makeImage() else { return SKTexture() }
+        return SKTexture(cgImage: cgImage)
+    }()
 }

@@ -163,7 +163,7 @@ private struct StartScreenView: View {
 
                     Spacer(minLength: 24)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
+                .frame(height: proxy.size.height)
                 .padding(.vertical, 18)
                 .padding(.horizontal, 16)
             }

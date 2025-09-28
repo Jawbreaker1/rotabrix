@@ -10,7 +10,7 @@ enum GameConfig {
     static let paddleResponsiveness: CGFloat = 0.32
     static let paddleEdgeInset: CGFloat = 8
 
-    static let ballRadius: CGFloat = 8
+    static let ballRadius: CGFloat = 6
     static let ballInitialSpeed: CGFloat = 340
     static let ballMaximumSpeed: CGFloat = 540
 
@@ -30,6 +30,10 @@ enum GameConfig {
     static let rotationFreezeDuration: TimeInterval = 0.35
     static let rotationAnimationDuration: TimeInterval = 0.4
     static let rotationBaseInterval: TimeInterval = 16
+
+    static let ballLaunchDelay: TimeInterval = 0.45
+    static let ballRespawnDelayAfterMiss: TimeInterval = 0.9
+    static let ballLostMessageFontSize: CGFloat = 19
 
     static let livesPerRun = 3
     static let scorePerStandardBrick = 100
