@@ -28,6 +28,7 @@ struct BrickDescriptor {
 
     let frame: CGRect
     let kind: Kind
+    let drop: DropDescriptor?
 }
 
 struct LevelLayout {
@@ -88,7 +89,8 @@ final class LevelGenerator {
                 if frame.minY <= bottomLimit { continue }
 
                 let kind = pickKind(forRow: row, random: &random)
-                let descriptor = BrickDescriptor(frame: frame, kind: kind)
+                let drop = pickDrop(for: kind, random: &random)
+                let descriptor = BrickDescriptor(frame: frame, kind: kind, drop: drop)
                 descriptors.append(descriptor)
             }
         }
@@ -108,6 +110,48 @@ final class LevelGenerator {
             return .tough
         } else {
             return .standard
+        }
+    }
+
+    private func pickDrop(for kind: BrickDescriptor.Kind, random: inout SeededRandom) -> DropDescriptor? {
+        guard kind != .unbreakable else { return nil }
+
+        let dropChance: Double
+        switch kind {
+        case .standard:
+            dropChance = 0.14
+        case .tough:
+            dropChance = 0.2
+        case .explosive:
+            dropChance = 0.22
+        case .unbreakable:
+            dropChance = 0
+        }
+
+        if random.nextUniform() > dropChance {
+            return nil
+        }
+
+        let roll = random.nextUniform()
+
+        if roll < 0.16 {
+            return DropDescriptor(kind: .extraLife)
+        } else if roll < 0.32 {
+            return DropDescriptor(kind: .multiBall(count: 2))
+        } else if roll < 0.48 {
+            return DropDescriptor(kind: .paddleGrow)
+        } else if roll < 0.64 {
+            return DropDescriptor(kind: .paddleShrink)
+        } else if roll < 0.78 {
+            let rotationAngles: [CGFloat] = [.pi / 2, -.pi / 2, .pi]
+            let index = Int(random.nextUniform() * Double(rotationAngles.count)) % rotationAngles.count
+            return DropDescriptor(kind: .rotation(angle: rotationAngles[index]))
+        } else if roll < 0.9 {
+            return DropDescriptor(kind: .gun)
+        } else {
+            let pointOptions = [100, 1000, 10_000]
+            let index = Int(random.nextUniform() * Double(pointOptions.count)) % pointOptions.count
+            return DropDescriptor(kind: .points(amount: pointOptions[index]))
         }
     }
 }

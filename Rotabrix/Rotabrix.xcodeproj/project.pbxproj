@@ -78,6 +78,8 @@
 				LevelGenerator.swift,
 				PhysicsCategory.swift,
 				PlayfieldOrientation.swift,
+				Drops/DropDescriptor.swift,
+				Drops/DropNode.swift,
 				Visual/GradientBackgroundNode.swift,
 			);
 			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;

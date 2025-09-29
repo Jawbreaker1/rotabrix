@@ -19,6 +19,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private var paddle: PaddleNode!
     private var ball: BallNode!
+    private var additionalBalls: [BallNode] = []
 
     private let levelGenerator = LevelGenerator()
     private var currentLayout: LevelLayout?
@@ -36,14 +37,22 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var rotationTimer: TimeInterval = 0
     private var rotationInterval: TimeInterval = GameConfig.rotationBaseInterval
     private var isRotationInProgress = false
-    private var storedVelocity: CGVector = .zero
+    private var storedBallVelocities: [ObjectIdentifier: CGVector] = [:]
     private var sceneReady = false
     private var queuedStart = false
     private var isGameActive = false
     private var isStartScreenActive = true
+    private var isBallRespawning = false
+    private let stalledVelocityThreshold = GameConfig.ballInitialSpeed * 0.25
+    private var paddleScaleEffectRemaining: TimeInterval = 0
+    private var gunEffectRemaining: TimeInterval = 0
+    private var laserCooldown: TimeInterval = 0
 
     private var lastUpdateTime: TimeInterval = 0
     private var currentLevelNumber: Int = 1
+
+    private let transitionLayer = SKNode()
+    private var isLevelTransitionActive = false
 
     private let backgroundPalettes: [[SKColor]] = [
         [
@@ -71,6 +80,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     weak var gameDelegate: GameSceneDelegate?
 
     private let ballLaunchActionKey = "ballLaunchAction"
+    private var activeBalls: [BallNode] {
+        var balls: [BallNode] = []
+        balls.append(ball)
+        balls.append(contentsOf: additionalBalls)
+        return balls
+    }
+    private var activeDrops: [DropNode] {
+        dropLayer.children.compactMap { $0 as? DropNode }
+    }
 
     private var portraitPlayfieldBounds: CGRect {
         let inset = GameConfig.playfieldInset
@@ -103,6 +121,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    private var hudBounds: CGRect {
+        CGRect(
+            x: -size.width / 2,
+            y: -size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
     override init(size: CGSize) {
         super.init(size: size)
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -131,6 +158,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupPaddle()
         setupBall()
         setupHUD()
+        setupTransitionLayer()
         sceneReady = true
 
         applyStartScreenPresentation()
@@ -150,7 +178,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         relayoutBricks(in: currentPlayfieldBounds)
         applyPaddleLayout(targetOverride: nil)
         dropLayer.removeAllChildren()
-        clampBallWithinPlayfield()
+        clampBallsWithinPlayfield()
+        updateTransitionLayerLayout()
     }
 
     func startNewGame() {
@@ -173,11 +202,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         lastUpdateTime = 0
         physicsWorld.speed = 1
         isGameActive = true
+        isBallRespawning = false
+        paddleScaleEffectRemaining = 0
+        applyPaddleScale(multiplier: 1)
+        gunEffectRemaining = 0
+        laserCooldown = 0
+        transitionLayer.removeAllChildren()
+        transitionLayer.removeAllActions()
+        transitionLayer.isHidden = true
+        isLevelTransitionActive = false
 
         playfieldNode.removeAllActions()
         playfieldNode.zRotation = 0
         setupBounds()
         applyPaddleLayout(targetOverride: 0.5)
+
+        paddle.alpha = 1
+        hud.alpha = 1
+        ball.isHidden = false
 
         hud.update(score: score, multiplier: multiplier, lives: lives)
         hud.showMessage("Ready")
@@ -235,14 +277,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             paddle.zRotation = 0
         }
 
-        ball.clampVelocity(maxSpeed: GameConfig.ballMaximumSpeed)
-        rotationTimer += delta
-
-        if rotationTimer > rotationInterval {
-            queueRotation()
+        for ballNode in activeBalls {
+            ballNode.clampVelocity(maxSpeed: GameConfig.ballMaximumSpeed)
         }
 
-        checkLifeLoss()
+        if isBallRespawning {
+            rotationTimer = 0
+        } else {
+            rotationTimer += delta
+            if rotationTimer > rotationInterval {
+                queueRotation()
+            }
+            checkLifeLoss()
+            restoreBallVelocityIfStalled()
+        }
+
+        updateDrops(delta: delta)
+        updatePaddleScaleTimer(delta: delta)
+        updateGun(delta: delta)
     }
 
     // MARK: - Setup
@@ -302,13 +354,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func setupHUD() {
-        hud.layout(in: currentPlayfieldBounds)
+        hud.layout(in: hudBounds)
         hud.zPosition = 20
         addChild(hud)
     }
 
     private func updateHUDLayout() {
-        hud.layout(in: currentPlayfieldBounds)
+        hud.layout(in: hudBounds)
+    }
+
+    private func setupTransitionLayer() {
+        transitionLayer.zPosition = 200
+        transitionLayer.isHidden = true
+        addChild(transitionLayer)
+    }
+
+    private func updateTransitionLayerLayout() {
+        for case let cover as SKSpriteNode in transitionLayer.children {
+            cover.size = size
+        }
     }
 
     // MARK: - Gameplay
@@ -331,8 +395,319 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    private func clearAdditionalBalls() {
+        for extra in additionalBalls {
+            extra.removeAllActions()
+            extra.removeFromParent()
+        }
+        additionalBalls.removeAll()
+    }
+
+    private func applyPaddleScale(multiplier: CGFloat, duration: TimeInterval? = nil) {
+        let clampedMultiplier = max(0.3, min(multiplier, 3))
+        paddle.setWidthMultiplier(clampedMultiplier)
+        applyPaddleLayout(targetOverride: nil)
+        if let duration {
+            paddleScaleEffectRemaining = duration
+        } else {
+            paddleScaleEffectRemaining = 0
+        }
+    }
+
+    private func updatePaddleScaleTimer(delta: TimeInterval) {
+        guard paddleScaleEffectRemaining > 0 else { return }
+        paddleScaleEffectRemaining = max(0, paddleScaleEffectRemaining - delta)
+        if paddleScaleEffectRemaining == 0 {
+            applyPaddleScale(multiplier: 1)
+        }
+    }
+
+    private func spawnAdditionalBalls(count: Int) {
+        guard count > 0 else { return }
+        let baseVelocity = ball.physicsBody?.velocity ?? .zero
+        let fallbackDirection = orientationInteriorDirection()
+        let baseVector: CGVector
+        if baseVelocity.magnitude >= stalledVelocityThreshold {
+            baseVector = baseVelocity
+        } else {
+            baseVector = CGVector(dx: fallbackDirection.dx * GameConfig.ballInitialSpeed,
+                                  dy: fallbackDirection.dy * GameConfig.ballInitialSpeed)
+        }
+
+        let baseAngle = atan2(baseVector.dy, baseVector.dx)
+        let baseSpeed = max(baseVector.magnitude, GameConfig.ballInitialSpeed)
+        let spread: CGFloat = .pi / 12
+
+        for index in 0..<count {
+            let newBall = BallNode(radius: GameConfig.ballRadius)
+            newBall.position = ball.position
+            newBall.zPosition = 6
+            newBall.setTrailTarget(playfieldNode)
+            playfieldNode.addChild(newBall)
+
+            let offset = CGFloat(index) - CGFloat(count - 1) / 2
+            let angle = baseAngle + offset * spread
+            newBall.physicsBody?.velocity = CGVector(
+                dx: cos(angle) * baseSpeed,
+                dy: sin(angle) * baseSpeed
+            )
+
+            additionalBalls.append(newBall)
+        }
+    }
+
+    private func spawnDrop(for descriptor: DropDescriptor, at position: CGPoint) {
+        let drop = DropNode(descriptor: descriptor)
+        drop.position = position
+        drop.zPosition = 4
+        drop.zRotation = playfieldNode.zRotation
+        drop.alpha = 0
+        dropLayer.addChild(drop)
+        drop.run(.fadeIn(withDuration: 0.1))
+    }
+
+    private func updateDrops(delta: TimeInterval) {
+        guard !activeDrops.isEmpty else { return }
+
+        let step = CGFloat(delta) * GameConfig.dropFallSpeed
+
+        let bounds = currentPlayfieldBounds
+        let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
+        let localCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+        let edgePoint = playfieldNode.convert(localEdgeMid, to: self)
+        let centerPoint = playfieldNode.convert(localCenter, to: self)
+        let outwardDx = edgePoint.x - centerPoint.x
+        let outwardDy = edgePoint.y - centerPoint.y
+        let outwardLength = sqrt(outwardDx * outwardDx + outwardDy * outwardDy)
+
+        let unitX: CGFloat = outwardLength > 0 ? outwardDx / outwardLength : 0
+        let unitY: CGFloat = outwardLength > 0 ? outwardDy / outwardLength : 0
+
+        for drop in activeDrops {
+            drop.position.y -= step
+            drop.zRotation = playfieldNode.zRotation
+
+            if handleDropCollection(drop) {
+                continue
+            }
+
+            let dropPoint = dropLayer.convert(drop.position, to: self)
+            let offsetX = dropPoint.x - edgePoint.x
+            let offsetY = dropPoint.y - edgePoint.y
+            let distanceBeyondEdge = offsetX * unitX + offsetY * unitY
+
+            if distanceBeyondEdge > 24 {
+                drop.removeAllActions()
+                drop.removeFromParent()
+            }
+        }
+    }
+
+    private func updateGun(delta: TimeInterval) {
+        guard gunEffectRemaining > 0 else { return }
+        gunEffectRemaining = max(0, gunEffectRemaining - delta)
+        laserCooldown = max(0, laserCooldown - delta)
+
+        if laserCooldown == 0 {
+            fireLaser()
+            laserCooldown = GameConfig.gunFireInterval
+        }
+
+        if gunEffectRemaining == 0 {
+            laserCooldown = 0
+        }
+    }
+
+    private func activateGunEffect() {
+        gunEffectRemaining = GameConfig.gunEffectDuration
+        laserCooldown = 0
+    }
+
+    private func fireLaser() {
+        let direction = CGVector(dx: 0, dy: 1)
+        let origin = paddle.position
+        let maxDimension = max(currentPlayfieldBounds.width, currentPlayfieldBounds.height) + 120
+        let endPoint = CGPoint(
+            x: origin.x + direction.dx * maxDimension,
+            y: origin.y + direction.dy * maxDimension
+        )
+
+        let path = CGMutablePath()
+        path.move(to: origin)
+        path.addLine(to: endPoint)
+
+        let beam = SKShapeNode(path: path)
+        beam.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.95)
+        beam.glowWidth = GameConfig.gunBeamGlowWidth
+        beam.lineWidth = GameConfig.gunBeamLineWidth
+        beam.alpha = 0.0
+        beam.zPosition = 9
+
+        let halo = SKShapeNode(path: path)
+        halo.strokeColor = SKColor(red: 1.0, green: 0.3, blue: 0.8, alpha: 0.8)
+        halo.glowWidth = GameConfig.gunBeamGlowWidth * 1.2
+        halo.lineWidth = GameConfig.gunBeamLineWidth * 0.5
+        halo.alpha = 0.0
+        halo.zPosition = 8
+
+        playfieldNode.addChild(halo)
+        playfieldNode.addChild(beam)
+
+        let fadeIn = SKAction.fadeAlpha(to: 1, duration: 0.04)
+        let fadeOut = SKAction.fadeOut(withDuration: GameConfig.gunBeamDuration)
+        let remove = SKAction.removeFromParent()
+        let sequence = SKAction.sequence([fadeIn, fadeOut, remove])
+        beam.run(sequence)
+        halo.run(sequence)
+
+        if let impact = firstBrickHitByLaser(from: origin, to: endPoint) {
+            handleBrickHit(impact.brick)
+            spawnLaserImpact(at: impact.point)
+        }
+    }
+
+    private func firstBrickHitByLaser(from start: CGPoint, to end: CGPoint) -> (brick: BrickNode, point: CGPoint)? {
+        var closest: (brick: BrickNode, distance: CGFloat, point: CGPoint)?
+
+        for case let brick as BrickNode in brickLayer.children {
+            let frame = brick.frame
+            if let impactPoint = lineSegmentIntersection(with: frame, from: start, to: end) {
+                let distance = start.distance(to: impactPoint)
+                if closest == nil || distance < closest!.distance {
+                    closest = (brick, distance, impactPoint)
+                }
+            }
+        }
+
+        return closest.map { ($0.brick, $0.point) }
+    }
+
+    private func spawnLaserImpact(at point: CGPoint) {
+        let pulse = SKShapeNode(circleOfRadius: 10)
+        pulse.position = point
+        pulse.fillColor = SKColor(red: 0.9, green: 1.0, blue: 1.0, alpha: 0.5)
+        pulse.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.9)
+        pulse.lineWidth = 1.5
+        pulse.glowWidth = 6
+        pulse.zPosition = 9
+        playfieldNode.addChild(pulse)
+        pulse.run(.sequence([
+            .group([
+                .scale(to: 2.4, duration: 0.2),
+                .fadeOut(withDuration: 0.2)
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
+    private func lineSegmentIntersection(with rect: CGRect, from start: CGPoint, to end: CGPoint) -> CGPoint? {
+        if rect.contains(start) { return start }
+
+        let bottomLeft = CGPoint(x: rect.minX, y: rect.minY)
+        let bottomRight = CGPoint(x: rect.maxX, y: rect.minY)
+        let topLeft = CGPoint(x: rect.minX, y: rect.maxY)
+        let topRight = CGPoint(x: rect.maxX, y: rect.maxY)
+
+        let edges: [(CGPoint, CGPoint)] = [
+            (bottomLeft, bottomRight),
+            (bottomRight, topRight),
+            (topRight, topLeft),
+            (topLeft, bottomLeft)
+        ]
+
+        var closestPoint: CGPoint?
+        var closestDistance = CGFloat.greatestFiniteMagnitude
+
+        for (edgeStart, edgeEnd) in edges {
+            if let intersection = segmentIntersection(p1: start, p2: end, p3: edgeStart, p4: edgeEnd) {
+                let distance = start.distance(to: intersection)
+                if distance < closestDistance {
+                    closestDistance = distance
+                    closestPoint = intersection
+                }
+            }
+        }
+
+        return closestPoint
+    }
+
+    private func segmentIntersection(p1: CGPoint, p2: CGPoint, p3: CGPoint, p4: CGPoint) -> CGPoint? {
+        let r = CGPoint(x: p2.x - p1.x, y: p2.y - p1.y)
+        let s = CGPoint(x: p4.x - p3.x, y: p4.y - p3.y)
+        let denominator = cross(r, s)
+        if abs(denominator) < 0.0001 { return nil }
+
+        let qp = CGPoint(x: p3.x - p1.x, y: p3.y - p1.y)
+        let t = cross(qp, s) / denominator
+        let u = cross(qp, r) / denominator
+
+        if t < 0 || t > 1 || u < 0 || u > 1 { return nil }
+
+        return CGPoint(x: p1.x + r.x * t, y: p1.y + r.y * t)
+    }
+
+    private func cross(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        return a.x * b.y - a.y * b.x
+    }
+
+    private func handleDropCollection(_ drop: DropNode) -> Bool {
+        let dropPoint = dropLayer.convert(drop.position, to: playfieldNode)
+        let catchZone = paddle.frame.insetBy(dx: -14, dy: -6)
+
+        if catchZone.contains(dropPoint) {
+            drop.removeAllActions()
+            drop.removeFromParent()
+            applyDropEffect(drop.descriptor)
+            return true
+        }
+
+        return false
+    }
+
+    private func applyDropEffect(_ descriptor: DropDescriptor) {
+        switch descriptor.kind {
+        case .extraLife:
+            if lives < GameConfig.maxLives {
+                lives += 1
+            }
+            hud.update(score: score, multiplier: multiplier, lives: lives)
+            hud.showMessage("Extra Life!")
+
+        case .multiBall(let count):
+            spawnAdditionalBalls(count: max(1, count))
+            hud.showMessage("Multiball!")
+
+        case .paddleGrow:
+            applyPaddleScale(multiplier: GameConfig.paddleGrowMultiplier, duration: GameConfig.paddleEffectDuration)
+            hud.showMessage("Paddle +")
+
+        case .paddleShrink:
+            applyPaddleScale(multiplier: GameConfig.paddleShrinkMultiplier, duration: GameConfig.paddleEffectDuration)
+            hud.showMessage("Paddle -")
+
+        case .rotation(let angle):
+            startRotation(by: angle, label: rotationLabel(for: angle))
+
+        case .gun:
+            activateGunEffect()
+            hud.showMessage("Laser!")
+
+        case .points(let amount):
+            score += amount * multiplier
+            hud.update(score: score, multiplier: multiplier, lives: lives)
+            hud.showMessage("+\(amount * multiplier)")
+            gameDelegate?.gameScene(self, didUpdateScore: score)
+        }
+    }
+
     private func resetBall(launchAfter delay: TimeInterval = GameConfig.ballLaunchDelay, freezePhysics: Bool = false) {
         guard let body = ball.physicsBody else { return }
+
+        clearAdditionalBalls()
+        if ball.parent == nil {
+            playfieldNode.addChild(ball)
+            ball.setTrailTarget(playfieldNode)
+        }
 
         body.velocity = .zero
 
@@ -355,7 +730,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             y: paddle.position.y + offset.dy
         )
 
-        clampBallWithinPlayfield()
+        clampBallsWithinPlayfield()
         ball.isHidden = false
 
         if freezePhysics {
@@ -363,6 +738,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         removeAction(forKey: ballLaunchActionKey)
+
+        isBallRespawning = true
+        rotationTimer = 0
 
         let launch = SKAction.run { [weak self] in
             guard let self, let physicsBody = self.ball.physicsBody else { return }
@@ -374,6 +752,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 dx: cos(angle) * GameConfig.ballInitialSpeed,
                 dy: sin(angle) * GameConfig.ballInitialSpeed
             ).rotated(by: self.orientationBaseAngle())
+            self.isBallRespawning = false
+            self.rotationTimer = 0
+            self.restoreBallVelocityIfStalled()
         }
 
         if delay > 0 {
@@ -387,21 +768,95 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func queueRotation() {
         guard !isRotationInProgress else { return }
         guard isGameActive else { return }
-        isRotationInProgress = true
-        rotationTimer = 0
+        guard !isBallRespawning else { return }
 
         let options: [CGFloat] = [.pi / 2, -.pi / 2, .pi]
         let choice = options.randomElement() ?? .pi / 2
-        storedVelocity = ball.physicsBody?.velocity ?? .zero
+        startRotation(by: choice, label: rotationLabel(for: choice))
+    }
 
-        hud.showMessage(choice == .pi ? "180 Spin" : (choice > 0 ? "Rotate +90" : "Rotate -90"))
+    private func startRotation(by angle: CGFloat, label: String) {
+        guard !isRotationInProgress else { return }
+        guard isGameActive else { return }
+        guard !isBallRespawning else { return }
+
+        isRotationInProgress = true
+        rotationTimer = 0
+
+        storedBallVelocities = activeBalls.reduce(into: [:]) { result, node in
+            if let velocity = node.physicsBody?.velocity {
+                result[ObjectIdentifier(node)] = velocity
+            }
+        }
+
+        hud.showMessage(label)
         let freeze = SKAction.run { [weak self] in self?.physicsWorld.speed = 0 }
         let wait = SKAction.wait(forDuration: GameConfig.rotationFreezeDuration)
-        let rotate = SKAction.rotate(byAngle: choice, duration: GameConfig.rotationAnimationDuration)
+        let rotate = SKAction.rotate(byAngle: angle, duration: GameConfig.rotationAnimationDuration)
         rotate.timingMode = .easeInEaseOut
-        let resume = SKAction.run { [weak self] in self?.finishRotation(by: choice) }
+        let resume = SKAction.run { [weak self] in self?.finishRotation(by: angle) }
 
         playfieldNode.run(.sequence([freeze, wait, rotate, resume]))
+    }
+
+    private func rotationLabel(for angle: CGFloat) -> String {
+        if abs(abs(angle) - .pi) < 0.01 {
+            return "180 Spin"
+        } else if angle > 0 {
+            return "Rotate +90"
+        } else {
+            return "Rotate -90"
+        }
+    }
+
+    private func restoreBallVelocityIfStalled() {
+        guard !isBallRespawning else { return }
+        guard !isRotationInProgress else { return }
+        guard physicsWorld.speed > 0 else { return }
+
+        let bounds = currentPlayfieldBounds
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+
+        for ballNode in activeBalls {
+            guard let body = ballNode.physicsBody else { continue }
+            if body.velocity.magnitude < stalledVelocityThreshold {
+                let toCenter = CGVector(dx: center.x - ballNode.position.x, dy: center.y - ballNode.position.y)
+                let baseDirection: CGVector
+                if toCenter.magnitude > 0.001 {
+                    baseDirection = toCenter.normalized
+                } else {
+                    baseDirection = orientationInteriorDirection()
+                }
+                let baseAngle = atan2(baseDirection.dy, baseDirection.dx)
+                let jitter = CGFloat.random(in: (-.pi / 6)...(.pi / 6))
+                let angle = baseAngle + jitter
+                let speed = GameConfig.ballInitialSpeed
+                body.velocity = CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed)
+            }
+        }
+    }
+
+    @discardableResult
+    private func handleBallExit(_ ballNode: BallNode) -> Bool {
+        ballNode.removeAllActions()
+        ballNode.removeFromParent()
+
+        if ballNode === ball {
+            if let replacement = additionalBalls.first {
+                additionalBalls.removeFirst()
+                ball = replacement
+                ball.setTrailTarget(playfieldNode)
+                return false
+            } else {
+                return true
+            }
+        }
+
+        if let index = additionalBalls.firstIndex(where: { $0 === ballNode }) {
+            additionalBalls.remove(at: index)
+        }
+
+        return false
     }
 
     private func finishRotation(by angle: CGFloat) {
@@ -416,21 +871,29 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupBounds()
         relayoutBricks(in: currentPlayfieldBounds)
         applyPaddleLayout(targetOverride: nil)
-        hud.layout(in: currentPlayfieldBounds)
+        hud.layout(in: hudBounds)
         dropLayer.removeAllChildren()
-        clampBallWithinPlayfield()
+        clampBallsWithinPlayfield()
 
-        let rotatedVelocity = storedVelocity.rotated(by: angle)
-        ball.physicsBody?.velocity = rotatedVelocity
-        storedVelocity = .zero
+        for ballNode in activeBalls {
+            let id = ObjectIdentifier(ballNode)
+            let original = storedBallVelocities[id] ?? ballNode.physicsBody?.velocity ?? .zero
+            ballNode.physicsBody?.velocity = original.rotated(by: angle)
+        }
+        storedBallVelocities.removeAll()
+
+        restoreBallVelocityIfStalled()
 
         rotationInterval = max(7, rotationInterval * 0.93)
     }
 
     private func checkLifeLoss() {
-        guard let body = ball.physicsBody, lives > 0 else { return }
-        let limit: CGFloat = 48
+        guard lives > 0 else { return }
 
+        let balls = activeBalls
+        guard !balls.isEmpty else { return }
+
+        let limit: CGFloat = 48
         let bounds = currentPlayfieldBounds
 
         let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
@@ -443,22 +906,34 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let outwardDy = edgePoint.y - centerPoint.y
         let outwardLength = sqrt(outwardDx * outwardDx + outwardDy * outwardDy)
 
-        if outwardLength > 0 {
-            let unitX = outwardDx / outwardLength
-            let unitY = outwardDy / outwardLength
+        guard outwardLength > 0 else { return }
 
-            let ballPoint = playfieldNode.convert(ball.position, to: self)
+        let unitX = outwardDx / outwardLength
+        let unitY = outwardDy / outwardLength
+
+        for ballNode in balls {
+            guard let body = ballNode.physicsBody else { continue }
+
+            let ballPoint = playfieldNode.convert(ballNode.position, to: self)
             let offsetX = ballPoint.x - edgePoint.x
             let offsetY = ballPoint.y - edgePoint.y
 
             let distanceBeyondEdge = offsetX * unitX + offsetY * unitY
 
             if distanceBeyondEdge > limit {
-                loseLife()
+                if handleBallExit(ballNode) {
+                    loseLife()
+                    return
+                } else {
+                    continue
+                }
             }
-        }
 
-        body.velocity = body.velocity.limited(minSpeed: GameConfig.ballInitialSpeed * 0.75, maxSpeed: GameConfig.ballMaximumSpeed)
+            body.velocity = body.velocity.limited(
+                minSpeed: GameConfig.ballInitialSpeed * 0.75,
+                maxSpeed: GameConfig.ballMaximumSpeed
+            )
+        }
     }
 
     private func applyPaddleLayout(targetOverride: CGFloat?) {
@@ -668,6 +1143,12 @@ private func configureParallax(for rect: CGRect) {
                 fontSize: GameConfig.ballLostMessageFontSize,
                 duration: GameConfig.ballRespawnDelayAfterMiss
             )
+            clearAdditionalBalls()
+            dropLayer.removeAllChildren()
+            paddleScaleEffectRemaining = 0
+            applyPaddleScale(multiplier: 1)
+            gunEffectRemaining = 0
+            laserCooldown = 0
             resetBall(
                 launchAfter: GameConfig.ballRespawnDelayAfterMiss,
                 freezePhysics: true
@@ -680,10 +1161,26 @@ private func configureParallax(for rect: CGRect) {
         physicsWorld.speed = 0
         rotationTimer = 0
         isRotationInProgress = false
+        isBallRespawning = false
         playfieldNode.removeAllActions()
         removeAction(forKey: ballLaunchActionKey)
-        ball.physicsBody?.velocity = .zero
-        ball.removeAllActions()
+        for node in activeBalls {
+            node.physicsBody?.velocity = .zero
+            node.removeAllActions()
+        }
+        clearAdditionalBalls()
+        transitionLayer.removeAllChildren()
+        transitionLayer.removeAllActions()
+        transitionLayer.isHidden = true
+        isLevelTransitionActive = false
+        paddle.alpha = 1
+        hud.alpha = 1
+        ball.isHidden = false
+        paddleScaleEffectRemaining = 0
+        applyPaddleScale(multiplier: 1)
+        gunEffectRemaining = 0
+        laserCooldown = 0
+        dropLayer.removeAllChildren()
         setStartScreenPresentation(active: true)
         gameDelegate?.gameSceneDidEnd(self, finalScore: score)
     }
@@ -693,12 +1190,18 @@ private func configureParallax(for rect: CGRect) {
     func didBegin(_ contact: SKPhysicsContact) {
         guard let aNode = contact.bodyA.node, let bNode = contact.bodyB.node else { return }
 
-        if let brick = (aNode as? BrickNode) ?? (bNode as? BrickNode), aNode.name == "ball" || bNode.name == "ball" {
+        let isBallA = aNode.name == "ball"
+        let isBallB = bNode.name == "ball"
+
+        if let brick = (aNode as? BrickNode) ?? (bNode as? BrickNode), isBallA || isBallB {
             handleBrickHit(brick)
         }
 
-        if (aNode.name == "paddle" && bNode.name == "ball") || (aNode.name == "ball" && bNode.name == "paddle") {
-            handlePaddleHit()
+        if (aNode.name == "paddle" && isBallB) || (bNode.name == "paddle" && isBallA) {
+            let ballNode = (isBallA ? aNode : bNode) as? BallNode
+            if let ballNode {
+                handlePaddleHit(for: ballNode)
+            }
         }
     }
 
@@ -706,7 +1209,15 @@ private func configureParallax(for rect: CGRect) {
         if brick.applyHit() {
             addScore(for: brick)
             runExplosion(at: brick.position, explosive: brick.isExplosive)
+            let dropDescriptor = brick.descriptor.drop
+            let dropPosition: CGPoint? = dropDescriptor.map { _ in
+                brickLayer.convert(brick.position, to: dropLayer)
+            }
             brick.removeFromParent()
+
+            if let descriptor = dropDescriptor, let position = dropPosition {
+                spawnDrop(for: descriptor, at: position)
+            }
 
             if brick.isExplosive {
                 triggerExplosionChain(from: brick.position, radius: 60)
@@ -720,15 +1231,15 @@ private func configureParallax(for rect: CGRect) {
         }
     }
 
-    private func handlePaddleHit() {
+    private func handlePaddleHit(for ballNode: BallNode) {
         streak += 1
         if streak % 6 == 0 {
             multiplier = min(10, multiplier + 1)
         }
         hud.update(score: score, multiplier: multiplier, lives: lives)
 
-        guard let body = ball.physicsBody else { return }
-        let ballScenePosition = playfieldNode.convert(ball.position, to: self)
+        guard let body = ballNode.physicsBody else { return }
+        let ballScenePosition = playfieldNode.convert(ballNode.position, to: self)
         let paddleScenePosition = playfieldNode.convert(paddle.position, to: self)
         let contactVector = CGVector(
             dx: ballScenePosition.x - paddleScenePosition.x,
@@ -747,13 +1258,14 @@ private func configureParallax(for rect: CGRect) {
     }
 
     private func levelCleared() {
-        hud.showMessage("Level \(levelIndex - 1) Clear")
+        guard !isLevelTransitionActive else { return }
+        isLevelTransitionActive = true
+
         rotationInterval = max(6, rotationInterval * 0.9)
-        run(.wait(forDuration: 1)) { [weak self] in
-            guard let self else { return }
-            self.loadNextLevel()
-            self.resetBall(launchAfter: GameConfig.ballLaunchDelay)
-        }
+        beginLevelTransition(
+            completedLevel: currentLevelNumber,
+            nextLevel: currentLevelNumber + 1
+        )
     }
 
     private func addScore(for brick: BrickNode) {
@@ -807,12 +1319,143 @@ private func configureParallax(for rect: CGRect) {
         for target in affected {
             addScore(for: target)
             runExplosion(at: target.position, explosive: false)
+            let dropDescriptor = target.descriptor.drop
+            let dropPosition = dropDescriptor.map { _ in
+                brickLayer.convert(target.position, to: dropLayer)
+            }
             target.removeFromParent()
+
+            if let descriptor = dropDescriptor, let position = dropPosition {
+                spawnDrop(for: descriptor, at: position)
+            }
         }
 
         if brickLayer.children.compactMap({ $0 as? BrickNode }).allSatisfy({ $0.isUnbreakable }) {
             levelCleared()
         }
+    }
+
+    private func beginLevelTransition(completedLevel: Int, nextLevel: Int) {
+        rotationTimer = 0
+        isBallRespawning = false
+        physicsWorld.speed = 0
+        isGameActive = false
+
+        removeAction(forKey: ballLaunchActionKey)
+        playfieldNode.removeAllActions()
+
+        for ballNode in activeBalls {
+            ballNode.physicsBody?.velocity = .zero
+            ballNode.removeAllActions()
+            ballNode.isHidden = true
+        }
+        clearAdditionalBalls()
+        dropLayer.removeAllChildren()
+        storedBallVelocities.removeAll()
+
+        paddle.run(.fadeAlpha(to: 0.5, duration: 0.18))
+        hud.run(.fadeAlpha(to: 0.5, duration: 0.18))
+
+        transitionLayer.removeAllChildren()
+        transitionLayer.removeAllActions()
+        transitionLayer.isHidden = false
+
+        let flash = SKSpriteNode(color: .white, size: size)
+        flash.alpha = 0
+        flash.zPosition = 0
+        transitionLayer.addChild(flash)
+
+        let completeLabel = makeTransitionLabel(text: "Level Complete")
+        completeLabel.setScale(0.82)
+        transitionLayer.addChild(completeLabel)
+
+        let nextLabel = makeTransitionLabel(text: "Level \(nextLevel)")
+        nextLabel.setScale(0.72)
+        transitionLayer.addChild(nextLabel)
+
+        let flashSequence = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.9, duration: 0.12),
+            SKAction.wait(forDuration: 0.32),
+            SKAction.fadeOut(withDuration: 0.35),
+            SKAction.removeFromParent()
+        ])
+        flash.run(flashSequence)
+
+        let completeSequence = SKAction.sequence([
+            SKAction.group([
+                SKAction.fadeIn(withDuration: 0.18),
+                SKAction.scale(to: 1.0, duration: 0.22)
+            ]),
+            SKAction.wait(forDuration: 0.45),
+            SKAction.group([
+                SKAction.fadeOut(withDuration: 0.18),
+                SKAction.scale(to: 0.94, duration: 0.18)
+            ]),
+            SKAction.removeFromParent()
+        ])
+        completeLabel.run(completeSequence)
+
+        let nextSequence = SKAction.sequence([
+            SKAction.wait(forDuration: 0.62),
+            SKAction.run { [weak self, weak nextLabel] in
+                guard let self, let nextLabel else { return }
+                self.prepareNextLevelPresentation(level: nextLevel)
+                nextLabel.alpha = 0
+                nextLabel.setScale(0.78)
+            },
+            SKAction.group([
+                SKAction.fadeIn(withDuration: 0.22),
+                SKAction.scale(to: 1.04, duration: 0.22)
+            ]),
+            SKAction.wait(forDuration: 0.55),
+            SKAction.group([
+                SKAction.fadeOut(withDuration: 0.2),
+                SKAction.scale(to: 0.96, duration: 0.2)
+            ]),
+            SKAction.removeFromParent(),
+            SKAction.run { [weak self] in
+                self?.completeLevelTransition()
+            }
+        ])
+        nextLabel.run(nextSequence)
+    }
+
+    private func prepareNextLevelPresentation(level: Int) {
+        loadNextLevel()
+        ball.position = paddle.position
+        ball.isHidden = true
+        hud.update(score: score, multiplier: multiplier, lives: lives)
+    }
+
+    private func completeLevelTransition() {
+        transitionLayer.run(.sequence([
+            SKAction.wait(forDuration: 0.05),
+            SKAction.run { [weak self] in
+                self?.transitionLayer.removeAllChildren()
+                self?.transitionLayer.isHidden = true
+            }
+        ]))
+
+        paddle.run(.fadeAlpha(to: 1, duration: 0.2))
+        hud.run(.fadeAlpha(to: 1, duration: 0.2))
+
+        rotationTimer = 0
+        physicsWorld.speed = 1
+        isGameActive = true
+        isLevelTransitionActive = false
+        resetBall(launchAfter: GameConfig.ballLaunchDelay + 0.35)
+    }
+
+    private func makeTransitionLabel(text: String) -> SKLabelNode {
+        let label = SKLabelNode(fontNamed: "Menlo")
+        label.text = text.uppercased()
+        label.fontSize = 34
+        label.fontColor = SKColor.white
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.alpha = 0
+        label.zPosition = 1
+        return label
     }
 
     private func orientationBaseAngle() -> CGFloat {
@@ -848,13 +1491,14 @@ private func configureParallax(for rect: CGRect) {
         }
     }
 
-    private func clampBallWithinPlayfield() {
-        guard let ballNode = ball else { return }
+    private func clampBallsWithinPlayfield() {
         let bounds = currentPlayfieldBounds.insetBy(dx: GameConfig.ballRadius, dy: GameConfig.ballRadius)
         guard bounds.width > 0, bounds.height > 0 else { return }
-        let clampedX = ballNode.position.x.clamped(to: bounds.minX...bounds.maxX)
-        let clampedY = ballNode.position.y.clamped(to: bounds.minY...bounds.maxY)
-        ballNode.position = CGPoint(x: clampedX, y: clampedY)
+        for ballNode in activeBalls {
+            let clampedX = ballNode.position.x.clamped(to: bounds.minX...bounds.maxX)
+            let clampedY = ballNode.position.y.clamped(to: bounds.minY...bounds.maxY)
+            ballNode.position = CGPoint(x: clampedX, y: clampedY)
+        }
     }
 
     func setStartScreenPresentation(active: Bool) {
@@ -870,6 +1514,7 @@ private func configureParallax(for rect: CGRect) {
         dropLayer.isHidden = hidden
         paddle?.isHidden = hidden
         ball?.isHidden = hidden
+        additionalBalls.forEach { $0.isHidden = hidden }
         boundaryNode?.isHidden = hidden
     }
 
@@ -971,6 +1616,12 @@ private extension CGVector {
         if mag == clamped { return self }
         let scale = clamped / mag
         return CGVector(dx: dx * scale, dy: dy * scale)
+    }
+
+    var normalized: CGVector {
+        let mag = magnitude
+        guard mag > 0 else { return .zero }
+        return CGVector(dx: dx / mag, dy: dy / mag)
     }
 }
 

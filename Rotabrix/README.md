@@ -4,9 +4,7 @@ A fast, colorful brick‑breaker for Apple Watch with Digital Crown precision an
 
 ## Current Status – 2025‑09‑23 Codex Session
 - Build succeeds in the watchOS simulator; playfield rotations and paddle controls remain stable after the latest layout experiments.
-- **Known issue:** bricks fail to render on the very first run after launch, but they appear normally after the first Game Over and subsequent restarts.
-- **Known issue:** when the ball exits along the rotated “bottom” edge, a life is not always deducted and a new ball is not consistently served.
-- Next steps for the follow-up session: fix initial brick placement against rotated bounds and tighten the orientation-aware life-loss check.
+- Next steps for the follow-up session: tune drop pacing, polish HUD feedback, and continue rotation balance work.
 
 ⸻
 

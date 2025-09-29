@@ -6,7 +6,7 @@ enum GameConfig {
     static let paddleCornerRadius: CGFloat = 6
     static let paddleMoveDamping: CGFloat = 0.18
     static let paddleSnapDistance: CGFloat = 2
-    static let paddleLaneInset: CGFloat = 36
+    static let paddleLaneInset: CGFloat = 30
     static let paddleResponsiveness: CGFloat = 0.32
     static let paddleEdgeInset: CGFloat = 8
 
@@ -40,4 +40,16 @@ enum GameConfig {
     static let scorePerToughBrick = 200
     static let scorePerExplosiveBrick = 150
     static let scorePerChainBonus = 75
+
+    static let dropFallSpeed: CGFloat = 95
+    static let paddleGrowMultiplier: CGFloat = 2
+    static let paddleShrinkMultiplier: CGFloat = 0.5
+    static let paddleEffectDuration: TimeInterval = 8
+    static let maxLives = 6
+
+    static let gunEffectDuration: TimeInterval = 5
+    static let gunFireInterval: TimeInterval = 0.25
+    static let gunBeamDuration: TimeInterval = 0.18
+    static let gunBeamGlowWidth: CGFloat = 6
+    static let gunBeamLineWidth: CGFloat = 2
 }

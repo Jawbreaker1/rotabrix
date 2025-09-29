@@ -198,31 +198,29 @@ private struct NeonTitle: View {
 
     var body: some View {
         let upper = text.uppercased()
-        let baseFont = Font.system(size: 30, weight: .heavy, design: .rounded)
-
-        return Text(upper)
+        let baseFont = Font.system(size: 40, weight: .black, design: .rounded)
+        let base = Text(upper)
             .font(baseFont)
-            .kerning(0.2)                 // tighter letter spacing to save width
+            .kerning(1.1)
             .lineLimit(1)
-            .minimumScaleFactor(0.85)     // only shrink a little
+            .minimumScaleFactor(0.6)
             .allowsTightening(true)
-            .layoutPriority(1)            // keep width preference
+
+        return base
             .overlay(
-                LinearGradient(colors: [.cyan, .mint, .pink],
-                               startPoint: .topLeading,
-                               endPoint: .bottomTrailing)
+                AngularGradient(
+                    gradient: Gradient(colors: [.cyan, .white, .purple, .pink]),
+                    center: .center
+                )
                 .mask(
-                    Text(upper)
-                        .font(baseFont)
-                        .kerning(0.2)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                        .allowsTightening(true)
+                    base
                 )
             )
-            .foregroundColor(.white.opacity(0.2))
-            .shadow(color: .cyan.opacity(0.6), radius: 6)
-            .shadow(color: .pink.opacity(0.55), radius: 12)
+            .foregroundColor(.white.opacity(0.25))
+            .shadow(color: .cyan.opacity(0.8), radius: 10, x: 0, y: 0)
+            .shadow(color: .purple.opacity(0.7), radius: 16, x: 0, y: 0)
+            .shadow(color: .pink.opacity(0.5), radius: 20, x: 0, y: 0)
+            .layoutPriority(1)            // keep width preference
     }
 }
 
