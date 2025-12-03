@@ -22,6 +22,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var additionalBalls: [BallNode] = []
 
     private let levelGenerator = LevelGenerator()
+    private var runSeed: UInt64 = GameConfig.levelSeedBase
     private var currentLayout: LevelLayout?
 
     private var orientation: PlayfieldOrientation = .bottom
@@ -39,6 +40,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var isRotationInProgress = false
     private var storedBallVelocities: [ObjectIdentifier: CGVector] = [:]
     private var sceneReady = false
+    private var isCountdownActive = false
     private var queuedStart = false
     private var isGameActive = false
     private var isStartScreenActive = true
@@ -47,6 +49,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var paddleScaleEffectRemaining: TimeInterval = 0
     private var gunEffectRemaining: TimeInterval = 0
     private var laserCooldown: TimeInterval = 0
+    private var paddleHitShakeCooldown: TimeInterval = 0
+    private var paddleHapticCooldown: TimeInterval = 0
+    private var currentBallSpeedMultiplier: CGFloat = 1.0
 
     private var lastUpdateTime: TimeInterval = 0
     private var currentLevelNumber: Int = 1
@@ -80,6 +85,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     weak var gameDelegate: GameSceneDelegate?
 
     private let ballLaunchActionKey = "ballLaunchAction"
+    private let countdownActionKey = "countdownAction"
     private var activeBalls: [BallNode] {
         var balls: [BallNode] = []
         balls.append(ball)
@@ -188,6 +194,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
+        runSeed = GameConfig.levelSeedBase
+        levelGenerator.reset(seed: runSeed)
+
         score = 0
         multiplier = 1
         streak = 0
@@ -200,8 +209,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         rotationInterval = GameConfig.rotationBaseInterval
         isRotationInProgress = false
         lastUpdateTime = 0
-        physicsWorld.speed = 1
-        isGameActive = true
+        physicsWorld.speed = 0
+        isGameActive = false
+        isCountdownActive = true
         isBallRespawning = false
         paddleScaleEffectRemaining = 0
         applyPaddleScale(multiplier: 1)
@@ -211,6 +221,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         transitionLayer.removeAllActions()
         transitionLayer.isHidden = true
         isLevelTransitionActive = false
+        currentBallSpeedMultiplier = 1.0
 
         playfieldNode.removeAllActions()
         playfieldNode.zRotation = 0
@@ -226,13 +237,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         gameDelegate?.gameSceneDidStart(self, score: score)
         gameDelegate?.gameScene(self, didUpdateScore: score)
 
-        levelGenerator.reset()
         dropLayer.removeAllChildren()
         currentLevelNumber = 1
         applyBackgroundPalette(forLevel: currentLevelNumber)
         loadNextLevel()
-        resetBall(launchAfter: GameConfig.ballLaunchDelay)
+        anchorBallForServe()
         setStartScreenPresentation(active: false)
+        startCountdown()
     }
 
     func updatePaddleTarget(normalized value: CGFloat) {
@@ -268,7 +279,28 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let delta = currentTime - lastUpdateTime
         lastUpdateTime = currentTime
         guard delta > 0 else { return }
+
+        if isCountdownActive {
+            let layout = currentPaddleEdgeLayout()
+            let target = layout.point(at: paddleTarget)
+            paddle.moveToward(target, delta: CGFloat(delta))
+            paddle.zRotation = 0
+
+            // Keep the ball attached to the paddle while physics is paused.
+            let anchor = anchoredBallPosition()
+            ball.position = anchor
+            clampBallsWithinPlayfield()
+            return
+        }
+
         guard isGameActive else { return }
+
+        if isRotationInProgress {
+            updatePaddleScaleTimer(delta: delta)
+            return
+        }
+        paddleHitShakeCooldown = max(0, paddleHitShakeCooldown - delta)
+        paddleHapticCooldown = max(0, paddleHapticCooldown - delta)
 
         if !isRotationInProgress {
             let layout = currentPaddleEdgeLayout()
@@ -380,7 +412,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func loadNextLevel() {
         brickLayer.removeAllChildren()
         let baseSize = portraitPlayfieldBounds.size
-        let layout = levelGenerator.nextLayout(for: baseSize, seed: GameConfig.levelSeedBase &+ UInt64(levelIndex))
+        let layout = levelGenerator.nextLayout(for: baseSize)
         currentLayout = layout
         currentLevelNumber = layout.levelNumber
         applyBackgroundPalette(forLevel: currentLevelNumber)
@@ -401,6 +433,39 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             extra.removeFromParent()
         }
         additionalBalls.removeAll()
+    }
+
+    private func anchoredBallPosition() -> CGPoint {
+        let center = CGPoint(x: currentPlayfieldBounds.midX, y: currentPlayfieldBounds.midY)
+        let toCenter = CGVector(dx: center.x - paddle.position.x, dy: center.y - paddle.position.y)
+        let direction: CGVector
+        if toCenter.magnitude > 0.001 {
+            direction = toCenter.normalized
+        } else {
+            direction = CGVector(dx: 0, dy: 1)
+        }
+        let offsetDistance = GameConfig.paddleSize.height + GameConfig.ballRadius * 2
+        let offset = CGVector(dx: direction.dx * offsetDistance, dy: direction.dy * offsetDistance)
+        return CGPoint(
+            x: paddle.position.x + offset.dx,
+            y: paddle.position.y + offset.dy
+        )
+    }
+
+    private func anchorBallForServe() {
+        clearAdditionalBalls()
+        if ball.parent == nil {
+            playfieldNode.addChild(ball)
+            ball.setTrailTarget(playfieldNode)
+        }
+
+        ball.physicsBody?.velocity = .zero
+        ball.physicsBody?.isDynamic = false
+
+        ball.position = anchoredBallPosition()
+
+        clampBallsWithinPlayfield()
+        ball.isHidden = false
     }
 
     private func applyPaddleScale(multiplier: CGFloat, duration: TimeInterval? = nil) {
@@ -561,7 +626,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         halo.run(sequence)
 
         if let impact = firstBrickHitByLaser(from: origin, to: endPoint) {
-            handleBrickHit(impact.brick)
+            handleBrickHit(impact.brick, source: .laser)
             spawnLaserImpact(at: impact.point)
         }
     }
@@ -693,14 +758,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             hud.showMessage("Laser!")
 
         case .points(let amount):
-            score += amount * multiplier
+            let delta = amount * multiplier
+            score += delta
             hud.update(score: score, multiplier: multiplier, lives: lives)
             hud.showMessage("+\(amount * multiplier)")
+            hud.animateScoreBoost(delta: delta)
             gameDelegate?.gameScene(self, didUpdateScore: score)
         }
     }
 
-    private func resetBall(launchAfter delay: TimeInterval = GameConfig.ballLaunchDelay, freezePhysics: Bool = false) {
+    private func resetBall(launchAfter delay: TimeInterval = GameConfig.ballLaunchDelay, freezePhysics: Bool = false, reanchor: Bool = true) {
         guard let body = ball.physicsBody else { return }
 
         clearAdditionalBalls()
@@ -710,27 +777,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         body.velocity = .zero
+        body.isDynamic = false
 
-        let center = CGPoint(x: currentPlayfieldBounds.midX, y: currentPlayfieldBounds.midY)
-        let toCenter = CGVector(dx: center.x - paddle.position.x, dy: center.y - paddle.position.y)
-
-        let direction: CGVector
-        if toCenter.magnitude > 0.001 {
-            let inverse = 1 / toCenter.magnitude
-            direction = CGVector(dx: toCenter.dx * inverse, dy: toCenter.dy * inverse)
-        } else {
-            direction = orientationInteriorDirection()
+        if reanchor {
+            ball.position = anchoredBallPosition()
+            clampBallsWithinPlayfield()
         }
 
-        let offsetDistance = GameConfig.paddleSize.height + GameConfig.ballRadius * 2
-        let offset = CGVector(dx: direction.dx * offsetDistance, dy: direction.dy * offsetDistance)
-
-        ball.position = CGPoint(
-            x: paddle.position.x + offset.dx,
-            y: paddle.position.y + offset.dy
-        )
-
-        clampBallsWithinPlayfield()
         ball.isHidden = false
 
         if freezePhysics {
@@ -747,10 +800,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             if freezePhysics {
                 self.physicsWorld.speed = 1
             }
+            physicsBody.isDynamic = true
             let angle = CGFloat.random(in: (.pi / 4)...(.pi * 3 / 4))
+            let speed = GameConfig.ballInitialSpeed * self.currentBallSpeedMultiplier
             physicsBody.velocity = CGVector(
-                dx: cos(angle) * GameConfig.ballInitialSpeed,
-                dy: sin(angle) * GameConfig.ballInitialSpeed
+                dx: cos(angle) * speed,
+                dy: sin(angle) * speed
             ).rotated(by: self.orientationBaseAngle())
             self.isBallRespawning = false
             self.rotationTimer = 0
@@ -1133,11 +1188,14 @@ private func configureParallax(for rect: CGRect) {
         multiplier = 1
         streak = 0
         hud.update(score: score, multiplier: multiplier, lives: lives)
+        Haptic.play(.lifeLost)
 
         if lives <= 0 {
             hud.showMessage("Game Over")
             gameOver()
         } else {
+            isGameActive = false
+            physicsWorld.speed = 0
             hud.showMessage(
                 "Ball Lost",
                 fontSize: GameConfig.ballLostMessageFontSize,
@@ -1149,20 +1207,27 @@ private func configureParallax(for rect: CGRect) {
             applyPaddleScale(multiplier: 1)
             gunEffectRemaining = 0
             laserCooldown = 0
-            resetBall(
-                launchAfter: GameConfig.ballRespawnDelayAfterMiss,
-                freezePhysics: true
-            )
+            isBallRespawning = true
+            let wait = SKAction.wait(forDuration: GameConfig.ballRespawnDelayAfterMiss)
+            let prep = SKAction.run { [weak self] in
+                self?.anchorBallForServe()
+            }
+            let countdown = SKAction.run { [weak self] in
+                self?.startCountdown()
+            }
+            run(.sequence([wait, prep, countdown]), withKey: countdownActionKey)
         }
     }
 
     private func gameOver() {
         isGameActive = false
+        isCountdownActive = false
         physicsWorld.speed = 0
         rotationTimer = 0
         isRotationInProgress = false
         isBallRespawning = false
         playfieldNode.removeAllActions()
+        removeAction(forKey: countdownActionKey)
         removeAction(forKey: ballLaunchActionKey)
         for node in activeBalls {
             node.physicsBody?.velocity = .zero
@@ -1194,7 +1259,18 @@ private func configureParallax(for rect: CGRect) {
         let isBallB = bNode.name == "ball"
 
         if let brick = (aNode as? BrickNode) ?? (bNode as? BrickNode), isBallA || isBallB {
-            handleBrickHit(brick)
+            let ballNode = (isBallA ? aNode : bNode) as? BallNode
+            let impactDirection: CGVector?
+            if let velocity = ballNode?.physicsBody?.velocity, velocity.magnitude > 0.001 {
+                impactDirection = velocity
+            } else if let ballNode {
+                let delta = CGVector(dx: brick.position.x - ballNode.position.x,
+                                     dy: brick.position.y - ballNode.position.y)
+                impactDirection = delta
+            } else {
+                impactDirection = nil
+            }
+            handleBrickHit(brick, source: .ball(impactDirection))
         }
 
         if (aNode.name == "paddle" && isBallB) || (bNode.name == "paddle" && isBallA) {
@@ -1205,7 +1281,12 @@ private func configureParallax(for rect: CGRect) {
         }
     }
 
-    private func handleBrickHit(_ brick: BrickNode) {
+    private enum HitSource {
+        case ball(CGVector?)
+        case laser
+    }
+
+    private func handleBrickHit(_ brick: BrickNode, source: HitSource = .ball(nil)) {
         if brick.applyHit() {
             addScore(for: brick)
             runExplosion(at: brick.position, explosive: brick.isExplosive)
@@ -1228,15 +1309,30 @@ private func configureParallax(for rect: CGRect) {
             }
         } else {
             streak += 1
+            if case .ball(let direction) = source,
+               brick.descriptor.kind.hitPoints > 1,
+               !brick.isUnbreakable,
+               let dir = direction?.normalized {
+                let offset = CGVector(dx: dir.dx * 3, dy: dir.dy * 3)
+                let nudge = SKAction.moveBy(x: offset.dx, y: offset.dy, duration: 0.08)
+                nudge.timingMode = .easeOut
+                let returnMove = SKAction.moveBy(x: -offset.dx, y: -offset.dy, duration: 0.12)
+                returnMove.timingMode = .easeIn
+                brick.run(.sequence([nudge, returnMove]), withKey: "brickNudge")
+            }
         }
     }
 
     private func handlePaddleHit(for ballNode: BallNode) {
         streak += 1
+        let oldMultiplier = multiplier
         if streak % 6 == 0 {
             multiplier = min(10, multiplier + 1)
         }
         hud.update(score: score, multiplier: multiplier, lives: lives)
+        if multiplier != oldMultiplier {
+            hud.animateMultiplier(multiplier)
+        }
 
         guard let body = ballNode.physicsBody else { return }
         let ballScenePosition = playfieldNode.convert(ballNode.position, to: self)
@@ -1245,6 +1341,17 @@ private func configureParallax(for rect: CGRect) {
             dx: ballScenePosition.x - paddleScenePosition.x,
             dy: ballScenePosition.y - paddleScenePosition.y
         )
+
+        // If the ball scraped under/behind the paddle, shove it back into the playfield and fire it inward.
+        let interiorDirection = orientationInteriorDirection()
+        let interiorDot = contactVector.dx * interiorDirection.dx + contactVector.dy * interiorDirection.dy
+        if interiorDot < 0 {
+            // If the ball contacted the underside/outside, keep it heading outward to avoid stickiness.
+            let speed = max(body.velocity.magnitude, GameConfig.ballInitialSpeed)
+            let outwardDir = contactVector.normalized
+            body.velocity = CGVector(dx: outwardDir.dx * speed, dy: outwardDir.dy * speed)
+            return
+        }
 
         let baseAngle = orientationBaseAngle()
         let canonicalImpact = contactVector.rotated(by: -baseAngle)
@@ -1255,6 +1362,22 @@ private func configureParallax(for rect: CGRect) {
         let angleOffset = normalized * (.pi / 4)
         let newAngle = baseAngle + (.pi / 2) + angleOffset
         body.velocity = CGVector(dx: cos(newAngle) * speed, dy: sin(newAngle) * speed)
+
+        // Light shake on paddle hit (rate-limited to avoid buzz).
+        if paddleHitShakeCooldown == 0 {
+            let shake = SKAction.sequence([
+                .moveBy(x: 0, y: 2, duration: 0.04),
+                .moveBy(x: 0, y: -2, duration: 0.04)
+            ])
+            shake.timingMode = .easeInEaseOut
+            paddle.run(shake, withKey: "paddleShake")
+            paddleHitShakeCooldown = 0.12
+        }
+
+        if paddleHapticCooldown == 0 {
+            Haptic.play(.paddleHit)
+            paddleHapticCooldown = 0.18
+        }
     }
 
     private func levelCleared() {
@@ -1270,8 +1393,10 @@ private func configureParallax(for rect: CGRect) {
 
     private func addScore(for brick: BrickNode) {
         let bonus = brick.isExplosive ? GameConfig.scorePerChainBonus : 0
-        score += (brick.scoreValue + bonus) * multiplier
+        let delta = (brick.scoreValue + bonus) * multiplier
+        score += delta
         hud.update(score: score, multiplier: multiplier, lives: lives)
+        hud.animateScoreBoost(delta: delta)
         gameDelegate?.gameScene(self, didUpdateScore: score)
     }
 
@@ -1340,8 +1465,10 @@ private func configureParallax(for rect: CGRect) {
         isBallRespawning = false
         physicsWorld.speed = 0
         isGameActive = false
+        isCountdownActive = false
 
         removeAction(forKey: ballLaunchActionKey)
+        removeAction(forKey: countdownActionKey)
         playfieldNode.removeAllActions()
 
         for ballNode in activeBalls {
@@ -1440,10 +1567,12 @@ private func configureParallax(for rect: CGRect) {
         hud.run(.fadeAlpha(to: 1, duration: 0.2))
 
         rotationTimer = 0
-        physicsWorld.speed = 1
-        isGameActive = true
+        physicsWorld.speed = 0
+        isGameActive = false
         isLevelTransitionActive = false
-        resetBall(launchAfter: GameConfig.ballLaunchDelay + 0.35)
+        currentBallSpeedMultiplier *= 1.12
+        anchorBallForServe()
+        startCountdown()
     }
 
     private func makeTransitionLabel(text: String) -> SKLabelNode {
@@ -1527,6 +1656,53 @@ private func configureParallax(for rect: CGRect) {
     private func applyBackgroundPalette(forLevel level: Int) {
         guard let background = backgroundNode else { return }
         background.updatePalette(paletteForLevel(level))
+    }
+
+    private func startCountdown() {
+        removeAction(forKey: countdownActionKey)
+        rotationTimer = 0
+        lastUpdateTime = 0
+        physicsWorld.speed = 0
+        isCountdownActive = true
+        isGameActive = true
+        isBallRespawning = true
+
+        let steps: [(String, TimeInterval, CGFloat)] = [
+            ("Get READY", 0.9, 19),
+            ("3", 0.65, 30),
+            ("2", 0.65, 30),
+            ("1", 0.65, 30)
+        ]
+
+        var actions: [SKAction] = []
+        for (text, duration, size) in steps {
+            actions.append(.run { [weak self] in
+                guard let self else { return }
+                self.animateCountdown(text: text, fontSize: size, duration: duration)
+            })
+            actions.append(.wait(forDuration: duration))
+        }
+
+        actions.append(.run { [weak self] in
+            self?.animateCountdown(text: "Go!", fontSize: 24, duration: 0.55)
+        })
+        actions.append(.wait(forDuration: 0.45))
+        actions.append(.run { [weak self] in
+            guard let self else { return }
+            self.isCountdownActive = false
+            self.rotationTimer = 0
+            self.lastUpdateTime = 0
+            self.physicsWorld.speed = 1
+            self.isGameActive = true
+            self.isBallRespawning = false
+            self.resetBall(launchAfter: GameConfig.ballLaunchDelay, reanchor: false)
+        })
+
+        run(.sequence(actions), withKey: countdownActionKey)
+    }
+
+    private func animateCountdown(text: String, fontSize: CGFloat, duration: TimeInterval) {
+        hud.showCountdown(text, fontSize: fontSize, duration: duration)
     }
 
     private func makeExplosionEmitter(big: Bool) -> SKEmitterNode {

@@ -2,9 +2,11 @@ Rotabrix
 
 A fast, colorful brick‑breaker for Apple Watch with Digital Crown precision and a signature twist: the playfield can rotate by 90°/180° (sometimes as a power‑up, sometimes as an “anti‑bonus”). The aim is short, intense runs that make you want to hit one more round.
 
-## Current Status – 2025‑09‑23 Codex Session
-- Build succeeds in the watchOS simulator; playfield rotations and paddle controls remain stable after the latest layout experiments.
-- Next steps for the follow-up session: tune drop pacing, polish HUD feedback, and continue rotation balance work.
+## Current Status – 2025‑12‑01 Codex Session
+- Build succeeds in the watchOS simulator; start → countdown → play flow is in place, with a high-score celebration screen and fireworks before returning to start.
+- Bricks are confined to the top three rows with even spacing in portrait, ≥50% fill per row, and deterministic patterns per level; ball speed ramps each level from a slower start.
+- Scoring feedback is more dramatic (multiplier pops, score bumps, tough-brick nudge animation, paddle shake), and underside paddle scrapes now eject outward instead of sticking.
+- Next steps: add background music (start + gameplay loops) and basic SFX/haptics, tune drop/gun pacing on device, and profile particles on hardware.
 
 ⸻
 

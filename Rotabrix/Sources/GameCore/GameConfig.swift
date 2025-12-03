@@ -11,21 +11,31 @@ enum GameConfig {
     static let paddleEdgeInset: CGFloat = 8
 
     static let ballRadius: CGFloat = 6
-    static let ballInitialSpeed: CGFloat = 340
-    static let ballMaximumSpeed: CGFloat = 540
+    static let ballInitialSpeed: CGFloat = 220
+    static let ballMaximumSpeed: CGFloat = 520
 
-    static let brickRows = 6
+    static let brickRows = 3
     static let brickColumns = 6
     static let brickSpacing: CGFloat = 6
     static let brickHeight: CGFloat = 18
     static let playfieldInset: CGFloat = 6
-    static let brickTopMargin: CGFloat = 46
+    static let brickTopMargin: CGFloat = 40
     static let brickBottomMargin: CGFloat = 64
-    static let brickCellHeightMin: CGFloat = 24
-    static let brickCellHeightMax: CGFloat = 32
+    static let brickTopMarginFraction: CGFloat = 0.17
+    static let brickBottomMarginFraction: CGFloat = 0.32
+    static let brickCellHeightMin: CGFloat = 18
+    static let brickCellHeightMax: CGFloat = 24
 
     static let levelSeedBase: UInt64 = 0xBA11C0DE
-    static let crownSensitivity: Double = 0.0125
+    static let crownNoiseThreshold: Double = 0.0012
+    static let crownRawDeltaClamp: Double = 0.35
+    static let crownDirectionalGrace: Double = 0.004
+    static let crownDeltaFilterFactor: Double = 0.18
+    static let crownPositionGain: Double = 0.42
+    static let crownPositionSmoothing: Double = 0.16
+    static let crownSmoothingReferenceFPS: Double = 120
+    static let crownMinUpdateInterval: TimeInterval = 1.0 / 200
+    static let crownMaxUpdateInterval: TimeInterval = 1.0 / 25
 
     static let rotationFreezeDuration: TimeInterval = 0.35
     static let rotationAnimationDuration: TimeInterval = 0.4

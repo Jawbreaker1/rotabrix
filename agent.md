@@ -50,4 +50,4 @@ Next Setup Tasks
 - Flesh out the `docs/` directory with dedicated design briefs as systems come online.
 - Initialize Swift package or Xcode project skeleton under `Sources/` once ready to code.
 - Align on licensing before repo goes public.
-
+- Add background music loops (start + gameplay) via `WKAudioFilePlayer`, and plan lightweight SFX/haptics for hits/misses/rotations.

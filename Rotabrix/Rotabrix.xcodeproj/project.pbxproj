@@ -69,6 +69,8 @@
 		C0FB35332E80816200BC7785 /* Exceptions for "GameCore" folder in "Rotabrix Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Drops/DropDescriptor.swift,
+				Drops/DropNode.swift,
 				Entities/BallNode.swift,
 				Entities/BrickNode.swift,
 				Entities/PaddleNode.swift,
@@ -78,8 +80,6 @@
 				LevelGenerator.swift,
 				PhysicsCategory.swift,
 				PlayfieldOrientation.swift,
-				Drops/DropDescriptor.swift,
-				Drops/DropNode.swift,
 				Visual/GradientBackgroundNode.swift,
 			);
 			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
@@ -88,6 +88,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Clamp.swift,
+				Haptic.swift,
 				SeededRandom.swift,
 			);
 			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
@@ -96,6 +97,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ContentView.swift,
+				CrownInputSystem.swift,
 				GameController.swift,
 			);
 			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
@@ -632,6 +634,7 @@
 		C0FB350F2E8036E000BC7785 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
@@ -639,6 +642,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -649,6 +653,7 @@
 		C0FB35102E8036E000BC7785 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
@@ -656,6 +661,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = BirdDisk.Rotabrix;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;

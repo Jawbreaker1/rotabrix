@@ -83,4 +83,57 @@ final class GameHUDNode: SKNode {
             .fadeAlpha(to: 0, duration: 0.25)
         ]))
     }
+
+    func showCountdown(_ text: String, fontSize: CGFloat = 18, duration: TimeInterval = 0.8) {
+        messageLabel.removeAllActions()
+        messageLabel.fontSize = fontSize
+        messageLabel.text = text
+        messageLabel.alpha = 0
+        messageLabel.setScale(0.7)
+
+        let fadeIn = SKAction.fadeAlpha(to: 1, duration: duration * 0.3)
+        fadeIn.timingMode = .easeOut
+        let scaleUp = SKAction.scale(to: 1.12, duration: duration * 0.3)
+        scaleUp.timingMode = .easeOut
+        let hold = SKAction.wait(forDuration: duration * 0.2)
+        let fadeOut = SKAction.fadeOut(withDuration: duration * 0.4)
+        fadeOut.timingMode = .easeIn
+        let scaleDown = SKAction.scale(to: 0.6, duration: duration * 0.4)
+        scaleDown.timingMode = .easeIn
+
+        messageLabel.run(.sequence([
+            .group([fadeIn, scaleUp]),
+            hold,
+            .group([fadeOut, scaleDown]),
+            .scale(to: 1, duration: 0)
+        ]))
+    }
+
+    func animateMultiplier(_ value: Int) {
+        multiplierLabel.removeAllActions()
+        multiplierLabel.text = "x\(value)"
+        let bump = SKAction.sequence([
+            .group([
+                .scale(to: 1.75, duration: 0.16),
+                .fadeAlpha(to: 1, duration: 0.16)
+            ]),
+            .scale(to: 1.0, duration: 0.2)
+        ])
+        bump.timingMode = .easeInEaseOut
+        multiplierLabel.run(bump, withKey: "multiplierBump")
+    }
+
+    func animateScoreBoost(delta: Int) {
+        guard delta >= 300 else { return }
+        scoreLabel.removeAllActions()
+        let bump = SKAction.sequence([
+            .group([
+                .scale(to: 1.24, duration: 0.12),
+                .fadeAlpha(to: 1, duration: 0.12)
+            ]),
+            .scale(to: 1.0, duration: 0.18)
+        ])
+        bump.timingMode = .easeInEaseOut
+        scoreLabel.run(bump, withKey: "scoreBump")
+    }
 }
