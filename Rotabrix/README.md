@@ -6,7 +6,7 @@ A fast, colorful brick‑breaker for Apple Watch with Digital Crown precision an
 - Build succeeds in the watchOS simulator; start → countdown → play flow is in place, with a high-score celebration screen and fireworks before returning to start.
 - Bricks are confined to the top three rows with even spacing in portrait, ≥50% fill per row, and deterministic patterns per level; ball speed ramps each level from a slower start.
 - Scoring feedback is more dramatic (multiplier pops, score bumps, tough-brick nudge animation, paddle shake), and underside paddle scrapes now eject outward instead of sticking.
-- Next steps: add background music (start + gameplay loops) and basic SFX/haptics, tune drop/gun pacing on device, and profile particles on hardware.
+- Background music loops now play on start screen and during gameplay via `AVAudioPlayer` (ambient; respects silent mode). SFX/haptics still pending; tune drop/gun pacing on device, and profile particles on hardware.
 
 ⸻
 
@@ -108,7 +108,10 @@ Effects & Particles
 Audio & Haptics
 	•	Haptics:
 	•	Light for normal hits, medium for power‑ups, strong for life loss/180° rotation.
-	•	Audio (later): synthy, short cues (pew/laser/neon ticks) that stay crisp at watch volume.
+	•	Audio: start + gameplay music loops ship in `Rotabrix Watch App/Audio` (`StartScreen.mp3`, `Gameplay.mp3`) and play with `.ambient` session (respects silent mode). SFX still to be added (pew/laser/neon ticks).
+
+Audio Files
+	•	Place music in `Rotabrix Watch App/Audio/` (filenames above). Already bundled in the project.
 
 ⸻
 

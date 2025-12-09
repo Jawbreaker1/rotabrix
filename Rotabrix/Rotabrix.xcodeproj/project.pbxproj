@@ -96,6 +96,7 @@
 		C0FB35452E80952800BC7785 /* Exceptions for "App" folder in "Rotabrix Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Audio/AudioManager.swift,
 				ContentView.swift,
 				CrownInputSystem.swift,
 				GameController.swift,

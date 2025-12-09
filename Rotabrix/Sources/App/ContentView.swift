@@ -8,11 +8,11 @@ struct ContentView: View {
     @StateObject private var crownSystem = CrownInputSystem()
     @FocusState private var isFocused: Bool
     @State private var crownValue: Double = 0
-    @State private var showStartScreen = true
+    @State private var overlay: OverlayState = .start
     @State private var lastScore: Int?
-    @State private var showHighScoreCelebration = false
-    @State private var highScoreCelebrationValue: Int = 0
     @AppStorage("rotabrix.highScore") private var highScore = 0
+    @AppStorage("rotabrix.musicVolume") private var musicVolume: Double = 0.6
+    private let audioManager = AudioManager.shared
 
     var body: some View {
         GeometryReader { proxy in
@@ -20,61 +20,80 @@ struct ContentView: View {
                 SpriteView(scene: controller.scene)
                     .ignoresSafeArea()
 
-                if showStartScreen {
-                    StartScreenView(highScore: highScore, lastScore: lastScore) {
+                switch overlay {
+                case .start:
+                    StartScreenView(highScore: highScore, lastScore: lastScore, volume: $musicVolume) {
                         startGame()
                     }
                     .transition(.opacity)
-                } else if showHighScoreCelebration {
-                    HighScoreCelebrationView(score: highScoreCelebrationValue) {
+                case .gameOver(let score):
+                    GameOverView(score: score) { endGameOver() }
+                        .transition(.opacity)
+                case .highScore(let score):
+                    HighScoreCelebrationView(score: score) {
                         endCelebration()
                     }
                     .transition(.opacity)
-                } else {
+                case .playing:
                     controlOverlay(size: proxy.size)
                 }
             }
             .onChange(of: crownValue) { newValue in
                 let normalized = crownSystem.process(value: newValue)
-                if !showStartScreen {
+                if overlay == .playing {
                     controller.updatePaddle(normalized: CGFloat(normalized))
                 }
             }
+            .onChange(of: overlay) { state in
+                switch state {
+                case .start:
+                    audioManager.playStartScreenLoop()
+                default:
+                    audioManager.stopStartScreenLoop()
+                }
+            }
+            .onChange(of: musicVolume) { newValue in
+                audioManager.setVolume(newValue)
+            }
             .onAppear {
+                overlay = .start
                 crownSystem.reset(position: 0.5, crownValue: crownValue)
                 controller.updatePaddle(normalized: 0.5)
                 controller.setStartScreenActive(true)
-                if !showStartScreen {
-                    DispatchQueue.main.async {
-                        isFocused = true
-                    }
-                }
+                audioManager.preparePlayers()
+                audioManager.setVolume(musicVolume)
+                audioManager.playStartScreenLoop()
             }
             .onDisappear {
                 isFocused = false
+                audioManager.stopAll()
+            }
+            .onReceive(controller.$isGameRunning) { isRunning in
+                if isRunning {
+                    audioManager.stopStartScreenLoop()
+                    audioManager.playGameplayLoop()
+                } else {
+                    audioManager.stopGameplayLoop()
+                }
             }
             .onReceive(controller.$gameOverScore) { score in
                 guard let score else { return }
                 lastScore = score
-                if score > highScore {
+                let isNewHigh = score > highScore
+                if isNewHigh {
                     highScore = score
                 }
-                let isNewHigh = score >= highScore
                 controller.setStartScreenActive(true)
                 crownSystem.overridePosition(0.5, crownValue: crownValue)
                 controller.updatePaddle(normalized: 0.5)
+                audioManager.stopGameplayLoop()
                 if isNewHigh {
-                    highScoreCelebrationValue = score
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        showHighScoreCelebration = true
-                        showStartScreen = false
+                        overlay = .highScore(score)
                     }
                 } else {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        showStartScreen = true
-                    }
-                    DispatchQueue.main.async {
-                        isFocused = false
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        overlay = .gameOver(score)
                     }
                 }
             }
@@ -88,8 +107,10 @@ extension ContentView {
         controller.updatePaddle(normalized: 0.5)
         controller.setStartScreenActive(false)
         controller.startGame()
+        audioManager.stopStartScreenLoop()
+        audioManager.playGameplayLoop()
         withAnimation(.easeInOut(duration: 0.2)) {
-            showStartScreen = false
+            overlay = .playing
         }
         DispatchQueue.main.async {
             isFocused = true
@@ -133,8 +154,16 @@ extension ContentView {
 
     private func endCelebration() {
         withAnimation(.easeOut(duration: 0.2)) {
-            showHighScoreCelebration = false
-            showStartScreen = true
+            overlay = .start
+        }
+        DispatchQueue.main.async {
+            isFocused = false
+        }
+    }
+
+    private func endGameOver() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            overlay = .start
         }
         DispatchQueue.main.async {
             isFocused = false
@@ -142,10 +171,25 @@ extension ContentView {
     }
 }
 
+private enum OverlayState: Equatable {
+    case start
+    case gameOver(Int)
+    case highScore(Int)
+    case playing
+}
+
 private struct StartScreenView: View {
     let highScore: Int
     let lastScore: Int?
+    @Binding var volume: Double
     let onStart: () -> Void
+
+    @FocusState private var isVolumeFocused: Bool
+    @State private var crownVolumeValue: Double = 0.6
+    @State private var showVolumeHUD = false
+    @State private var hideHUDWorkItem: DispatchWorkItem?
+    @State private var didAppear = false
+    @State private var lastRawCrownValue: Double = 0.6
 
     var body: some View {
         GeometryReader { proxy in
@@ -169,7 +213,7 @@ private struct StartScreenView: View {
                             ScoreBadge(label: "Last Score", value: lastScore)
                         }
 
-                        ScoreBadge(label: "High Score", value: highScore)
+                    ScoreBadge(label: "High Score", value: highScore)
                     }
                     .frame(maxWidth: .infinity)
 
@@ -200,6 +244,139 @@ private struct StartScreenView: View {
                 .frame(height: proxy.size.height)
                 .padding(.vertical, 18)
                 .padding(.horizontal, 16)
+            }
+            .overlay(alignment: .topTrailing) {
+                if showVolumeHUD {
+                    VolumeHUDView(volume: volume)
+                        .transition(.opacity)
+                        .padding(.top, 6)
+                        .padding(.trailing, 8)
+                }
+            }
+        }
+        .focusable(true)
+        .digitalCrownRotation(
+            $crownVolumeValue,
+            from: -1000,
+            through: 1000,
+            by: 0.02,
+            sensitivity: .low,
+            isContinuous: true,
+            isHapticFeedbackEnabled: true
+        )
+        .focused($isVolumeFocused)
+        .onAppear {
+            crownVolumeValue = min(max(volume, 0), 1)
+            lastRawCrownValue = crownVolumeValue
+            isVolumeFocused = true
+            DispatchQueue.main.async {
+                didAppear = true
+            }
+        }
+        .onDisappear {
+            isVolumeFocused = false
+            hideHUDWorkItem?.cancel()
+        }
+        .onChange(of: crownVolumeValue) { newValue in
+            handleCrownChange(newValue)
+        }
+    }
+
+    private func handleCrownChange(_ newValue: Double) {
+        let delta = newValue - lastRawCrownValue
+        lastRawCrownValue = newValue
+
+        guard abs(delta) > 0.0001 else { return }
+
+        let nextVolume = min(max(volume + delta, 0), 1)
+        if nextVolume != volume {
+            volume = nextVolume
+        }
+        presentVolumeHUD()
+    }
+
+    private func presentVolumeHUD() {
+        guard didAppear else { return }
+        withAnimation(.easeOut(duration: 0.12)) {
+            showVolumeHUD = true
+        }
+        hideHUDWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            withAnimation(.easeOut(duration: 0.2)) { showVolumeHUD = false }
+        }
+        hideHUDWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: workItem)
+    }
+}
+
+private struct VolumeHUDView: View {
+    let volume: Double
+
+    var body: some View {
+        let clamped = max(0, min(1, volume))
+        ZStack {
+            Circle()
+                .fill(Color.black.opacity(0.55))
+                .frame(width: 58, height: 58)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.15), lineWidth: 6)
+                )
+                .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 3)
+
+            Circle()
+                .trim(from: 0, to: clamped)
+                .stroke(
+                    LinearGradient(colors: [.cyan, .pink], startPoint: .leading, endPoint: .trailing),
+                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                )
+                .frame(width: 58, height: 58)
+                .rotationEffect(.degrees(-90))
+
+            Image(systemName: clamped > 0.66 ? "speaker.wave.3.fill" : clamped > 0.33 ? "speaker.wave.2.fill" : (clamped > 0.05 ? "speaker.wave.1.fill" : "speaker.slash.fill"))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .accessibilityLabel("Music volume")
+        .accessibilityValue(String(format: "%.0f percent", clamped * 100))
+    }
+}
+
+private struct GameOverView: View {
+    let score: Int
+    let onComplete: () -> Void
+
+    @State private var didSchedule = false
+
+    var body: some View {
+        ZStack {
+            RadialGradient(
+                colors: [Color.black, Color.red.opacity(0.55), Color.blue.opacity(0.4)],
+                center: .center,
+                startRadius: 10,
+                endRadius: 320
+            )
+            .ignoresSafeArea()
+            .overlay(Color.black.opacity(0.38))
+
+            VStack(spacing: 10) {
+                Text("Game Over")
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(LinearGradient(colors: [.white, .red.opacity(0.85)], startPoint: .leading, endPoint: .trailing))
+                    .shadow(color: .red.opacity(0.6), radius: 8)
+
+                Text("\(score)")
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.5), radius: 6)
+            }
+            .padding(.horizontal, 12)
+        }
+        .onAppear {
+            guard !didSchedule else { return }
+            didSchedule = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                onComplete()
             }
         }
     }

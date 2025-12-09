@@ -946,7 +946,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard lives > 0 else { return }
 
         let balls = activeBalls
-        guard !balls.isEmpty else { return }
+        // If somehow all balls have been removed while the game is active, treat it as a miss.
+        guard !balls.isEmpty else {
+            loseLife()
+            return
+        }
 
         let limit: CGFloat = 48
         let bounds = currentPlayfieldBounds
@@ -1578,7 +1582,7 @@ private func configureParallax(for rect: CGRect) {
     private func makeTransitionLabel(text: String) -> SKLabelNode {
         let label = SKLabelNode(fontNamed: "Menlo")
         label.text = text.uppercased()
-        label.fontSize = 34
+        label.fontSize = 26
         label.fontColor = SKColor.white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
