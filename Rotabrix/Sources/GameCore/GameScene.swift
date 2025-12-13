@@ -196,6 +196,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         runSeed = GameConfig.levelSeedBase
         levelGenerator.reset(seed: runSeed)
+        clearAdditionalBalls()
 
         score = 0
         multiplier = 1
@@ -311,6 +312,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         for ballNode in activeBalls {
             ballNode.clampVelocity(maxSpeed: GameConfig.ballMaximumSpeed)
+            dislodgeIfAxisAligned(ballNode)
         }
 
         if isBallRespawning {
@@ -891,6 +893,26 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    private func dislodgeIfAxisAligned(_ ballNode: BallNode) {
+        guard let body = ballNode.physicsBody else { return }
+        let v = body.velocity
+        let speed = v.magnitude
+        guard speed > 0 else { return }
+
+        let absDx = abs(v.dx) / speed
+        let absDy = abs(v.dy) / speed
+        let epsilon = GameConfig.ballAxisAlignmentEpsilon
+
+        // If the ball is traveling nearly perfectly vertical or horizontal, add a slight angle jitter.
+        if absDx < epsilon || absDy < epsilon {
+            var angle = atan2(v.dy, v.dx)
+            let jitter = CGFloat.random(in: (-.pi / 24)...(.pi / 24))
+            angle += jitter
+            let newSpeed = max(speed, GameConfig.ballInitialSpeed)
+            body.velocity = CGVector(dx: cos(angle) * newSpeed, dy: sin(angle) * newSpeed)
+        }
+    }
+
     @discardableResult
     private func handleBallExit(_ ballNode: BallNode) -> Bool {
         ballNode.removeAllActions()
@@ -954,6 +976,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let limit: CGFloat = 48
         let bounds = currentPlayfieldBounds
+        let boundsWithMargin = bounds.insetBy(dx: -16, dy: -16)
 
         let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
         let localCenter = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -974,6 +997,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             guard let body = ballNode.physicsBody else { continue }
 
             let ballPoint = playfieldNode.convert(ballNode.position, to: self)
+            let localBall = playfieldNode.convert(ballPoint, from: self)
+            let orphaned = ballNode.parent == nil || ballNode.scene == nil
+
+            if orphaned || !boundsWithMargin.contains(localBall) {
+                if handleBallExit(ballNode) {
+                    loseLife()
+                    return
+                } else {
+                    continue
+                }
+            }
+
             let offsetX = ballPoint.x - edgePoint.x
             let offsetY = ballPoint.y - edgePoint.y
 
@@ -1233,11 +1268,11 @@ private func configureParallax(for rect: CGRect) {
         playfieldNode.removeAllActions()
         removeAction(forKey: countdownActionKey)
         removeAction(forKey: ballLaunchActionKey)
+        clearAdditionalBalls()
         for node in activeBalls {
             node.physicsBody?.velocity = .zero
             node.removeAllActions()
         }
-        clearAdditionalBalls()
         transitionLayer.removeAllChildren()
         transitionLayer.removeAllActions()
         transitionLayer.isHidden = true
@@ -1312,10 +1347,12 @@ private func configureParallax(for rect: CGRect) {
                 levelCleared()
             }
         } else {
+            if brick.isUnbreakable {
+                return
+            }
             streak += 1
             if case .ball(let direction) = source,
                brick.descriptor.kind.hitPoints > 1,
-               !brick.isUnbreakable,
                let dir = direction?.normalized {
                 let offset = CGVector(dx: dir.dx * 3, dy: dir.dy * 3)
                 let nudge = SKAction.moveBy(x: offset.dx, y: offset.dy, duration: 0.08)
@@ -1359,7 +1396,7 @@ private func configureParallax(for rect: CGRect) {
 
         let baseAngle = orientationBaseAngle()
         let canonicalImpact = contactVector.rotated(by: -baseAngle)
-        let axisSign: CGFloat = orientation == .bottom ? 1 : -1
+        let axisSign: CGFloat = -1
         let maxOffset = GameConfig.paddleSize.width / 2
         let normalized = (canonicalImpact.dx * axisSign / maxOffset).clamped(to: CGFloat(-1)...CGFloat(1))
         let speed = max(body.velocity.magnitude, GameConfig.ballInitialSpeed)

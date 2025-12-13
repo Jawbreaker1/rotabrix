@@ -14,6 +14,8 @@ final class AudioManager {
     private var activeTrack: Track?
     private var sessionConfigured = false
     private var masterVolume: Float = 0.6
+    private var isEnabled = true
+    private var lastRequestedTrack: Track?
 
     private init() {
         preparePlayers()
@@ -58,9 +60,26 @@ final class AudioManager {
         gameplayPlayer?.volume = clamped
     }
 
+    func setEnabled(_ enabled: Bool) {
+        isEnabled = enabled
+        if !enabled {
+            stopCurrent()
+            activeTrack = nil
+        } else if let track = lastRequestedTrack {
+            switchTo(track: track)
+        }
+    }
+
     // MARK: - Private
 
     private func switchTo(track: Track) {
+        lastRequestedTrack = track
+        guard isEnabled else {
+            stopCurrent()
+            activeTrack = nil
+            return
+        }
+
         if activeTrack == track {
             restartIfPaused(for: track)
             return

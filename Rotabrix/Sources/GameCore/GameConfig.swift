@@ -36,6 +36,8 @@ enum GameConfig {
     static let crownSmoothingReferenceFPS: Double = 120
     static let crownMinUpdateInterval: TimeInterval = 1.0 / 200
     static let crownMaxUpdateInterval: TimeInterval = 1.0 / 25
+    static let crownSensitivityRange: ClosedRange<Double> = 0.6...1.4
+    static let defaultCrownSensitivity: Double = 1.0
 
     static let rotationFreezeDuration: TimeInterval = 0.35
     static let rotationAnimationDuration: TimeInterval = 0.4
@@ -44,6 +46,7 @@ enum GameConfig {
     static let ballLaunchDelay: TimeInterval = 0.45
     static let ballRespawnDelayAfterMiss: TimeInterval = 0.9
     static let ballLostMessageFontSize: CGFloat = 19
+    static let ballAxisAlignmentEpsilon: CGFloat = 0.08
 
     static let livesPerRun = 3
     static let scorePerStandardBrick = 100

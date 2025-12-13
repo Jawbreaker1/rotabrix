@@ -130,7 +130,7 @@ final class LevelGenerator {
     private static let prebuiltPatterns: [LevelPattern] = [
         LevelPattern(rows: ["ssttss", "s.xx.s", "s.mm.s"]),
         LevelPattern(rows: ["ttsstt", "s....s", "ttsstt"]),
-        LevelPattern(rows: ["ssxxss", "..g..", "ssxxss"]),
+        LevelPattern(rows: ["ssxxss", "..g...", "ssxxss"]),
         LevelPattern(rows: ["uussuu", ".ssss.", "uussuu"]),
         LevelPattern(rows: [".ssll.", "ssttss", ".ssll."]),
         LevelPattern(rows: ["ss..ss", "xx..xx", "ss..ss"]),

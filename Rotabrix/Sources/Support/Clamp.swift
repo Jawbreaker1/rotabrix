@@ -12,3 +12,9 @@ extension ClosedRange where Bound == CGFloat {
         Swift.min(upperBound, Swift.max(lowerBound, value))
     }
 }
+
+extension ClosedRange where Bound == Double {
+    func clampedValue(_ value: Double) -> Double {
+        Swift.min(upperBound, Swift.max(lowerBound, value))
+    }
+}

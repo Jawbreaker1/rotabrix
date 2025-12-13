@@ -12,6 +12,10 @@ struct ContentView: View {
     @State private var lastScore: Int?
     @AppStorage("rotabrix.highScore") private var highScore = 0
     @AppStorage("rotabrix.musicVolume") private var musicVolume: Double = 0.6
+    @AppStorage("rotabrix.soundEnabled") private var soundEnabled: Bool = true
+    @AppStorage("rotabrix.hapticsEnabled") private var hapticsEnabled: Bool = true
+    @AppStorage("rotabrix.crownSensitivity") private var crownSensitivity: Double = GameConfig.defaultCrownSensitivity
+    @State private var showingSettings = false
     private let audioManager = AudioManager.shared
 
     var body: some View {
@@ -22,9 +26,14 @@ struct ContentView: View {
 
                 switch overlay {
                 case .start:
-                    StartScreenView(highScore: highScore, lastScore: lastScore, volume: $musicVolume) {
-                        startGame()
-                    }
+                    StartScreenView(
+                        highScore: highScore,
+                        lastScore: lastScore,
+                        volume: $musicVolume,
+                        onStart: { startGame() },
+                        onSettings: { showingSettings = true }
+                    )
+                    .allowsHitTesting(!showingSettings)
                     .transition(.opacity)
                 case .gameOver(let score):
                     GameOverView(score: score) { endGameOver() }
@@ -33,9 +42,33 @@ struct ContentView: View {
                     HighScoreCelebrationView(score: score) {
                         endCelebration()
                     }
-                    .transition(.opacity)
+                        .transition(.opacity)
                 case .playing:
                     controlOverlay(size: proxy.size)
+                }
+            }
+            .overlay {
+                if showingSettings {
+                    NavigationStack {
+                        SettingsView(
+                            soundEnabled: $soundEnabled,
+                            hapticsEnabled: $hapticsEnabled,
+                            crownSensitivity: $crownSensitivity,
+                            onClose: { showingSettings = false }
+                        )
+                        .navigationTitle("Settings")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(action: { showingSettings = false }) {
+                                    Image(systemName: "xmark")
+                                }
+                            }
+                        }
+                        .toolbarBackground(.hidden, for: .navigationBar)
+                    }
+                    .transition(.move(edge: .trailing))
+                    .zIndex(1)
                 }
             }
             .onChange(of: crownValue) { newValue in
@@ -55,14 +88,35 @@ struct ContentView: View {
             .onChange(of: musicVolume) { newValue in
                 audioManager.setVolume(newValue)
             }
+            .onChange(of: soundEnabled) { enabled in
+                audioManager.setEnabled(enabled)
+                if enabled {
+                    if controller.isGameRunning {
+                        audioManager.playGameplayLoop()
+                    } else if overlay == .start {
+                        audioManager.playStartScreenLoop()
+                    }
+                }
+            }
+            .onChange(of: hapticsEnabled) { enabled in
+                Haptic.setEnabled(enabled)
+            }
+            .onChange(of: crownSensitivity) { newValue in
+                crownSystem.setSensitivity(newValue)
+            }
             .onAppear {
                 overlay = .start
                 crownSystem.reset(position: 0.5, crownValue: crownValue)
+                crownSystem.setSensitivity(crownSensitivity)
                 controller.updatePaddle(normalized: 0.5)
                 controller.setStartScreenActive(true)
                 audioManager.preparePlayers()
                 audioManager.setVolume(musicVolume)
-                audioManager.playStartScreenLoop()
+                audioManager.setEnabled(soundEnabled)
+                Haptic.setEnabled(hapticsEnabled)
+                if soundEnabled {
+                    audioManager.playStartScreenLoop()
+                }
             }
             .onDisappear {
                 isFocused = false
@@ -183,6 +237,7 @@ private struct StartScreenView: View {
     let lastScore: Int?
     @Binding var volume: Double
     let onStart: () -> Void
+    let onSettings: () -> Void
 
     @FocusState private var isVolumeFocused: Bool
     @State private var crownVolumeValue: Double = 0.6
@@ -193,6 +248,7 @@ private struct StartScreenView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let topInset = proxy.safeAreaInsets.top
             ZStack {
                 AngularGradient(
                     gradient: Gradient(colors: [Color.black, Color.purple.opacity(0.6), Color.blue.opacity(0.65), Color.black]),
@@ -252,6 +308,16 @@ private struct StartScreenView: View {
                         .padding(.top, 6)
                         .padding(.trailing, 8)
                 }
+            }
+            .overlay(alignment: .bottomLeading) {
+                Button(action: onSettings) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8)
+                .padding(.bottom, max(4, proxy.safeAreaInsets.bottom + 2))
             }
         }
         .focusable(true)
@@ -475,6 +541,112 @@ private struct NeonTitle: View {
             .shadow(color: .purple.opacity(0.7), radius: 16, x: 0, y: 0)
             .shadow(color: .pink.opacity(0.5), radius: 20, x: 0, y: 0)
             .layoutPriority(1)            // keep width preference
+    }
+}
+
+private struct SettingsView: View {
+    @Binding var soundEnabled: Bool
+    @Binding var hapticsEnabled: Bool
+    @Binding var crownSensitivity: Double
+    let onClose: () -> Void
+
+    private var sensitivityLabel: String {
+        String(format: "%.1f", crownSensitivity)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.85).ignoresSafeArea()
+                LinearGradient(
+                    colors: [Color.black, Color.blue.opacity(0.45), Color.purple.opacity(0.45)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        VStack(spacing: 10) {
+                            Toggle(isOn: $soundEnabled) {
+                                Label("Sound", systemImage: "speaker.wave.2.fill")
+                                    .foregroundColor(.white)
+                            }
+                            .tint(.cyan)
+
+                            Toggle(isOn: $hapticsEnabled) {
+                                Label("Vibration", systemImage: "waveform.path")
+                                    .foregroundColor(.white)
+                            }
+                            .tint(.pink)
+                        }
+                        .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "dial.medium")
+                                    .foregroundColor(.white)
+                                VStack(alignment: .leading, spacing: -2) {
+                                    Text("Crown")
+                                    Text("Sensitivity")
+                                }
+                                .foregroundColor(.white)
+                                Spacer()
+                                Text(sensitivityLabel)
+                                    .font(.footnote)
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+
+                            Slider(
+                                value: $crownSensitivity,
+                                in: GameConfig.crownSensitivityRange,
+                                step: 0.02
+                            )
+                            .tint(.orange)
+
+                            Button("Reset to Default") {
+                                crownSensitivity = GameConfig.defaultCrownSensitivity
+                            }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.12))
+                            )
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
+
+                        Text("Game by Bird Disk")
+                            .font(.footnote)
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.horizontal, 14)
+                    .padding(.top, max(0, proxy.safeAreaInsets.top - 2))
+                    .padding(.bottom, 18)
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            }
+        }
     }
 }
 

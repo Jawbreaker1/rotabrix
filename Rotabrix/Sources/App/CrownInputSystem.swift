@@ -7,6 +7,7 @@ final class CrownInputSystem: ObservableObject {
     private(set) var normalizedPosition: Double
 
     private var targetPosition: Double
+    private var sensitivity: Double = GameConfig.defaultCrownSensitivity
     private var filteredDelta: Double = 0
     private var lastCrownValue: Double
     private var lastTimestamp: CFTimeInterval?
@@ -42,7 +43,7 @@ final class CrownInputSystem: ObservableObject {
         let deltaFilter = smoothingResponse(for: dt, base: GameConfig.crownDeltaFilterFactor)
         filteredDelta += (delta - filteredDelta) * deltaFilter
 
-        targetPosition = (targetPosition + filteredDelta * GameConfig.crownPositionGain).clamped(to: 0...1)
+        targetPosition = (targetPosition + filteredDelta * GameConfig.crownPositionGain * sensitivity).clamped(to: 0...1)
 
         let positionResponse = smoothingResponse(for: dt, base: GameConfig.crownPositionSmoothing)
         normalizedPosition += (targetPosition - normalizedPosition) * positionResponse
@@ -53,6 +54,11 @@ final class CrownInputSystem: ObservableObject {
         }
 
         return normalizedPosition
+    }
+
+    func setSensitivity(_ value: Double) {
+        let clamped = GameConfig.crownSensitivityRange.clampedValue(value)
+        sensitivity = clamped
     }
 
     func reset(position: Double, crownValue: Double, timestamp: CFTimeInterval? = nil) {

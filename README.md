@@ -13,6 +13,7 @@ This document captures the current state of the Apple Watch brick-breaker protot
 - **Crown controls**: Smoothed deltas and noise filtering keep paddle motion predictable across simulator/hardware.
 - **Level order**: Uses a fixed sequence of curated layouts (no randomness). A randomized/daily mode may come later as a separate option.
 - **Audio volume**: Start-screen crown volume control clamps hard to 0–100% with no wraparound; scrolling past the ends no longer flips the volume.
+- **Settings overlay**: Gear on the start screen opens a settings sheet with sound on/off, haptics on/off, and a crown sensitivity slider (stored in `@AppStorage` with a reset-to-default option).
 
 ## Known Issues / TODO
 1. **Audio & music** – Background loops (start + gameplay) now run via `AVAudioPlayer` (ambient; respects silent mode). Still need momentary SFX/haptics (hits, drops, rotation, countdown) and a quick crackle check on simulator.
@@ -21,6 +22,7 @@ This document captures the current state of the Apple Watch brick-breaker protot
 4. **Performance validation** – Profile particle-heavy moments (explosions, lasers, fireworks) on real hardware.
 5. **Testing** – Add unit tests for level generator (fill rules, seeding), geometry helpers, and scoring math.
 6. **Music volume control** – Start-screen crown volume HUD now clamps to 0–100% with buffered raw values; retest on hardware to ensure no edge wrap/stickiness remains.
+7. **Settings layout** – Gear icon and settings sheet are misaligned vertically (appear low/centered). Close “X” renders as a pill; should be a simple glyph anchored flush to the top-left. Needs safe-area/layout fixes.
 
 ## Next Steps
 1. Finish audio polish: add SFX/haptics for hits/misses/rotations and confirm simulator/device audio is clean.
