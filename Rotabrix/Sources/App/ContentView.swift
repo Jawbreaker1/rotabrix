@@ -4,6 +4,7 @@ import Combine
 import WatchKit
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var controller = GameController()
     @StateObject private var crownSystem = CrownInputSystem()
     @FocusState private var isFocused: Bool
@@ -104,6 +105,23 @@ struct ContentView: View {
             .onChange(of: crownSensitivity) { newValue in
                 crownSystem.setSensitivity(newValue)
             }
+            .onChange(of: scenePhase) { phase in
+                switch phase {
+                case .active:
+                    audioManager.setEnabled(soundEnabled)
+                    if soundEnabled {
+                        if controller.isGameRunning {
+                            audioManager.playGameplayLoop()
+                        } else {
+                            audioManager.playStartScreenLoop()
+                        }
+                    }
+                case .inactive, .background:
+                    audioManager.stopAll()
+                @unknown default:
+                    break
+                }
+            }
             .onAppear {
                 overlay = .start
                 crownSystem.reset(position: 0.5, crownValue: crownValue)
@@ -196,6 +214,7 @@ extension ContentView {
                 isHapticFeedbackEnabled: false
             )
             .hideCrownAccessory()
+            .ignoresSafeArea()
     }
 
     private func handleTouch(_ location: CGPoint, in size: CGSize) {
@@ -266,10 +285,10 @@ private struct StartScreenView: View {
 
                     VStack(spacing: 8) {
                         if let lastScore, lastScore > 0 {
-                            ScoreBadge(label: "Last Score", value: lastScore)
+                            ScoreBadge(label: "Last", value: lastScore)
                         }
 
-                    ScoreBadge(label: "High Score", value: highScore)
+                    ScoreBadge(label: "High", value: highScore)
                     }
                     .frame(maxWidth: .infinity)
 
@@ -578,7 +597,7 @@ private struct SettingsView: View {
                                 Label("Vibration", systemImage: "waveform.path")
                                     .foregroundColor(.white)
                             }
-                            .tint(.pink)
+                            .tint(.cyan)
                         }
                         .padding()
                             .background(
@@ -611,18 +630,6 @@ private struct SettingsView: View {
                                 step: 0.02
                             )
                             .tint(.orange)
-
-                            Button("Reset to Default") {
-                                crownSensitivity = GameConfig.defaultCrownSensitivity
-                            }
-                            .font(.footnote.weight(.semibold))
-                            .foregroundColor(.white)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.white.opacity(0.12))
-                            )
                         }
                         .padding()
                         .background(

@@ -119,6 +119,10 @@ final class LevelGenerator {
             return (.standard, DropDescriptor(kind: .gun))
         case "p", "P":
             return (.standard, DropDescriptor(kind: .points(amount: 1_000)))
+        case "b", "B":
+            return (.standard, DropDescriptor(kind: .paddleGrow))
+        case "c", "C":
+            return (.standard, DropDescriptor(kind: .paddleShrink))
         case ".":
             return nil
         default:
@@ -129,9 +133,9 @@ final class LevelGenerator {
     // 50 hand-crafted, symmetrical layouts (top 3 rows only).
     private static let prebuiltPatterns: [LevelPattern] = [
         LevelPattern(rows: ["ssttss", "s.xx.s", "s.mm.s"]),
-        LevelPattern(rows: ["ttsstt", "s....s", "ttsstt"]),
+        LevelPattern(rows: ["ttbctt", "s....s", "ttsstt"]),
         LevelPattern(rows: ["ssxxss", "..g...", "ssxxss"]),
-        LevelPattern(rows: ["uussuu", ".ssss.", "uussuu"]),
+        LevelPattern(rows: ["uussuu", "ubmmbu", "uussuu"]),
         LevelPattern(rows: [".ssll.", "ssttss", ".ssll."]),
         LevelPattern(rows: ["ss..ss", "xx..xx", "ss..ss"]),
         LevelPattern(rows: ["ssttss", "..mm..", "ssttss"]),
