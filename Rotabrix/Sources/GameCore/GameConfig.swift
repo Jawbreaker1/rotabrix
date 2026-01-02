@@ -1,6 +1,47 @@
 import CoreGraphics
 import Foundation
 
+enum GameDifficulty: String, CaseIterable, Identifiable {
+    case easy
+    case medium
+    case hard
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .easy:
+            return "Easy"
+        case .medium:
+            return "Medium"
+        case .hard:
+            return "Hard"
+        }
+    }
+
+    var speedMultiplier: CGFloat {
+        switch self {
+        case .easy:
+            return 0.5
+        case .medium:
+            return 1.0
+        case .hard:
+            return 1.5
+        }
+    }
+
+    var scoreMultiplier: Double {
+        switch self {
+        case .easy:
+            return 0.5
+        case .medium:
+            return 1.0
+        case .hard:
+            return 1.5
+        }
+    }
+}
+
 enum GameConfig {
     static let paddleSize = CGSize(width: 70, height: 12)
     static let paddleCornerRadius: CGFloat = 6

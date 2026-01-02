@@ -11,7 +11,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let playfieldNode = SKNode()
     private let brickLayer = SKNode()
     private let dropLayer = SKNode()
-    private let hud = GameHUDNode()
+    private let hud: GameHUDNode
     private let parallaxNode = SKNode()
     private var boundaryNode: SKShapeNode?
     private var backgroundNode: GradientBackgroundNode?
@@ -24,6 +24,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let levelGenerator = LevelGenerator()
     private var runSeed: UInt64 = GameConfig.levelSeedBase
     private var currentLayout: LevelLayout?
+    private var metrics: GameMetrics
 
     private var orientation: PlayfieldOrientation = .bottom
     private var rotationIndex: Int = 0
@@ -45,13 +46,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var isGameActive = false
     private var isStartScreenActive = true
     private var isBallRespawning = false
-    private let stalledVelocityThreshold = GameConfig.ballInitialSpeed * 0.25
+    private var stalledVelocityThreshold: CGFloat {
+        scaledBallInitialSpeed * 0.25
+    }
     private var paddleScaleEffectRemaining: TimeInterval = 0
     private var gunEffectRemaining: TimeInterval = 0
     private var laserCooldown: TimeInterval = 0
     private var paddleHitShakeCooldown: TimeInterval = 0
     private var paddleHapticCooldown: TimeInterval = 0
     private var currentBallSpeedMultiplier: CGFloat = 1.0
+    private var difficulty: GameDifficulty = .medium
 
     private var lastUpdateTime: TimeInterval = 0
     private var currentLevelNumber: Int = 1
@@ -96,8 +100,20 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         dropLayer.children.compactMap { $0 as? DropNode }
     }
 
+    private var scaledBallInitialSpeed: CGFloat {
+        scaled(GameConfig.ballInitialSpeed) * difficulty.speedMultiplier
+    }
+
+    private var scaledBallMaximumSpeed: CGFloat {
+        scaled(GameConfig.ballMaximumSpeed) * difficulty.speedMultiplier
+    }
+
+    private var scaledBallMinimumSpeed: CGFloat {
+        scaledBallInitialSpeed * 0.75
+    }
+
     private var portraitPlayfieldBounds: CGRect {
-        let inset = GameConfig.playfieldInset
+        let inset = scaled(GameConfig.playfieldInset)
         return CGRect(
             x: -size.width / 2 + inset,
             y: -size.height / 2 + inset,
@@ -107,7 +123,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private var landscapePlayfieldBounds: CGRect {
-        let inset = GameConfig.playfieldInset
+        let inset = scaled(GameConfig.playfieldInset)
         let width = max(0, size.height - inset * 2)
         let height = max(0, size.width - inset * 2)
         return CGRect(
@@ -137,11 +153,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     override init(size: CGSize) {
+        self.metrics = GameMetrics(sceneSize: size)
+        self.hud = GameHUDNode(scale: metrics.scale)
         super.init(size: size)
         anchorPoint = CGPoint(x: 0.5, y: 0.5)
     }
 
     required init?(coder: NSCoder) {
+        self.metrics = GameMetrics(sceneSize: GameMetrics.referenceSize)
+        self.hud = GameHUDNode(scale: metrics.scale)
         super.init(coder: coder)
     }
 
@@ -178,6 +198,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
         guard oldSize != size else { return }
+        updateMetrics(for: size)
         setupBackground()
         setupBounds()
         playfieldNode.zRotation = CGFloat(rotationIndex) * (.pi / 2)
@@ -186,6 +207,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         dropLayer.removeAllChildren()
         clampBallsWithinPlayfield()
         updateTransitionLayerLayout()
+    }
+
+    func setDifficulty(_ difficulty: GameDifficulty) {
+        self.difficulty = difficulty
     }
 
     func startNewGame() {
@@ -311,7 +336,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
         for ballNode in activeBalls {
-            ballNode.clampVelocity(maxSpeed: GameConfig.ballMaximumSpeed)
+            ballNode.clampVelocity(maxSpeed: scaledBallMaximumSpeed)
             dislodgeIfAxisAligned(ballNode)
         }
 
@@ -338,7 +363,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         boundaryNode?.removeFromParent()
         let path = CGMutablePath()
-        let corner: CGFloat = 32
+        let corner: CGFloat = scaled(32)
         let left = rect.minX
         let right = rect.maxX
         let top = rect.maxY
@@ -353,8 +378,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let boundary = SKShapeNode(path: path)
         boundary.strokeColor = SKColor.white.withAlphaComponent(0.2)
-        boundary.lineWidth = 2
-        boundary.glowWidth = 9
+        boundary.lineWidth = scaled(2)
+        boundary.glowWidth = scaled(9)
         boundary.name = "boundary"
 
         boundary.physicsBody = SKPhysicsBody(edgeChainFrom: path)
@@ -372,7 +397,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func setupPaddle() {
-        paddle = PaddleNode(size: GameConfig.paddleSize)
+        paddle = PaddleNode(
+            size: scaled(GameConfig.paddleSize),
+            cornerRadius: scaled(GameConfig.paddleCornerRadius),
+            snapDistance: scaled(GameConfig.paddleSnapDistance),
+            scale: metrics.scale
+        )
         let layout = currentPaddleEdgeLayout()
         paddle.position = layout.point(at: paddleTarget)
         paddle.zPosition = 5
@@ -380,7 +410,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func setupBall() {
-        ball = BallNode(radius: GameConfig.ballRadius)
+        ball = BallNode(radius: scaled(GameConfig.ballRadius), scale: metrics.scale)
         ball.position = CGPoint(x: 0, y: -currentPlayfieldBounds.height / 4)
         ball.zPosition = 6
         playfieldNode.addChild(ball)
@@ -409,12 +439,31 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    private func updateMetrics(for size: CGSize) {
+        let newMetrics = GameMetrics(sceneSize: size)
+        let scaleChanged = abs(newMetrics.scale - metrics.scale) > 0.001
+        metrics = newMetrics
+        guard scaleChanged else { return }
+
+        hud.updateScale(metrics.scale)
+        guard sceneReady else { return }
+
+        paddle.updateMetrics(
+            size: scaled(GameConfig.paddleSize),
+            cornerRadius: scaled(GameConfig.paddleCornerRadius),
+            snapDistance: scaled(GameConfig.paddleSnapDistance),
+            scale: metrics.scale
+        )
+        ball.updateMetrics(radius: scaled(GameConfig.ballRadius), scale: metrics.scale)
+        additionalBalls.forEach { $0.updateMetrics(radius: scaled(GameConfig.ballRadius), scale: metrics.scale) }
+    }
+
     // MARK: - Gameplay
 
     private func loadNextLevel() {
         brickLayer.removeAllChildren()
         let baseSize = portraitPlayfieldBounds.size
-        let layout = levelGenerator.nextLayout(for: baseSize)
+        let layout = levelGenerator.nextLayout(for: baseSize, metrics: metrics)
         currentLayout = layout
         currentLevelNumber = layout.levelNumber
         applyBackgroundPalette(forLevel: currentLevelNumber)
@@ -423,7 +472,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let bounds = currentPlayfieldBounds
 
         for descriptor in layout.bricks {
-            let brick = BrickNode(descriptor: descriptor)
+            let brick = BrickNode(descriptor: descriptor, scale: metrics.scale)
             brick.position = positionForBrick(descriptor: descriptor, layout: layout, in: bounds)
             brickLayer.addChild(brick)
         }
@@ -446,7 +495,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         } else {
             direction = CGVector(dx: 0, dy: 1)
         }
-        let offsetDistance = GameConfig.paddleSize.height + GameConfig.ballRadius * 2
+        let offsetDistance = scaled(GameConfig.paddleSize.height + GameConfig.ballRadius * 2)
         let offset = CGVector(dx: direction.dx * offsetDistance, dy: direction.dy * offsetDistance)
         return CGPoint(
             x: paddle.position.x + offset.dx,
@@ -497,16 +546,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if baseVelocity.magnitude >= stalledVelocityThreshold {
             baseVector = baseVelocity
         } else {
-            baseVector = CGVector(dx: fallbackDirection.dx * GameConfig.ballInitialSpeed,
-                                  dy: fallbackDirection.dy * GameConfig.ballInitialSpeed)
+            let speed = scaledBallInitialSpeed
+            baseVector = CGVector(dx: fallbackDirection.dx * speed,
+                                  dy: fallbackDirection.dy * speed)
         }
 
         let baseAngle = atan2(baseVector.dy, baseVector.dx)
-        let baseSpeed = max(baseVector.magnitude, GameConfig.ballInitialSpeed)
+        let baseSpeed = max(baseVector.magnitude, scaledBallInitialSpeed)
         let spread: CGFloat = .pi / 12
 
         for index in 0..<count {
-            let newBall = BallNode(radius: GameConfig.ballRadius)
+            let newBall = BallNode(radius: scaled(GameConfig.ballRadius), scale: metrics.scale)
             newBall.position = ball.position
             newBall.zPosition = 6
             newBall.setTrailTarget(playfieldNode)
@@ -524,7 +574,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func spawnDrop(for descriptor: DropDescriptor, at position: CGPoint) {
-        let drop = DropNode(descriptor: descriptor)
+        let drop = DropNode(descriptor: descriptor, scale: metrics.scale)
         drop.position = position
         drop.zPosition = 4
         drop.zRotation = playfieldNode.zRotation
@@ -536,7 +586,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func updateDrops(delta: TimeInterval) {
         guard !activeDrops.isEmpty else { return }
 
-        let step = CGFloat(delta) * GameConfig.dropFallSpeed
+        let step = CGFloat(delta) * scaled(GameConfig.dropFallSpeed)
 
         let bounds = currentPlayfieldBounds
         let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
@@ -563,7 +613,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let offsetY = dropPoint.y - edgePoint.y
             let distanceBeyondEdge = offsetX * unitX + offsetY * unitY
 
-            if distanceBeyondEdge > 24 {
+            if distanceBeyondEdge > scaled(24) {
                 drop.removeAllActions()
                 drop.removeFromParent()
             }
@@ -593,7 +643,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func fireLaser() {
         let direction = CGVector(dx: 0, dy: 1)
         let origin = paddle.position
-        let maxDimension = max(currentPlayfieldBounds.width, currentPlayfieldBounds.height) + 120
+        let maxDimension = max(currentPlayfieldBounds.width, currentPlayfieldBounds.height) + scaled(120)
         let endPoint = CGPoint(
             x: origin.x + direction.dx * maxDimension,
             y: origin.y + direction.dy * maxDimension
@@ -605,15 +655,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let beam = SKShapeNode(path: path)
         beam.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.95)
-        beam.glowWidth = GameConfig.gunBeamGlowWidth
-        beam.lineWidth = GameConfig.gunBeamLineWidth
+        beam.glowWidth = scaled(GameConfig.gunBeamGlowWidth)
+        beam.lineWidth = scaled(GameConfig.gunBeamLineWidth)
         beam.alpha = 0.0
         beam.zPosition = 9
 
         let halo = SKShapeNode(path: path)
         halo.strokeColor = SKColor(red: 1.0, green: 0.3, blue: 0.8, alpha: 0.8)
-        halo.glowWidth = GameConfig.gunBeamGlowWidth * 1.2
-        halo.lineWidth = GameConfig.gunBeamLineWidth * 0.5
+        halo.glowWidth = scaled(GameConfig.gunBeamGlowWidth * 1.2)
+        halo.lineWidth = scaled(GameConfig.gunBeamLineWidth * 0.5)
         halo.alpha = 0.0
         halo.zPosition = 8
 
@@ -650,12 +700,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func spawnLaserImpact(at point: CGPoint) {
-        let pulse = SKShapeNode(circleOfRadius: 10)
+        let pulse = SKShapeNode(circleOfRadius: scaled(10))
         pulse.position = point
         pulse.fillColor = SKColor(red: 0.9, green: 1.0, blue: 1.0, alpha: 0.5)
         pulse.strokeColor = SKColor(red: 0.4, green: 1.0, blue: 1.0, alpha: 0.9)
-        pulse.lineWidth = 1.5
-        pulse.glowWidth = 6
+        pulse.lineWidth = scaled(1.5)
+        pulse.glowWidth = scaled(6)
         pulse.zPosition = 9
         playfieldNode.addChild(pulse)
         pulse.run(.sequence([
@@ -719,7 +769,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func handleDropCollection(_ drop: DropNode) -> Bool {
         let dropPoint = dropLayer.convert(drop.position, to: playfieldNode)
-        let catchZone = paddle.frame.insetBy(dx: -14, dy: -6)
+        let catchZone = paddle.frame.insetBy(dx: -scaled(14), dy: -scaled(6))
 
         if catchZone.contains(dropPoint) {
             drop.removeAllActions()
@@ -760,10 +810,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             hud.showMessage("Laser!")
 
         case .points(let amount):
-            let delta = amount * multiplier
+            let baseDelta = amount * multiplier
+            let delta = adjustedScore(baseDelta)
             score += delta
             hud.update(score: score, multiplier: multiplier, lives: lives)
-            hud.showMessage("+\(amount * multiplier)")
+            hud.showMessage("+\(delta)")
             hud.animateScoreBoost(delta: delta)
             gameDelegate?.gameScene(self, didUpdateScore: score)
         }
@@ -804,7 +855,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
             physicsBody.isDynamic = true
             let angle = CGFloat.random(in: (.pi / 4)...(.pi * 3 / 4))
-            let speed = GameConfig.ballInitialSpeed * self.currentBallSpeedMultiplier
+            let speed = self.scaledBallInitialSpeed * self.currentBallSpeedMultiplier
             physicsBody.velocity = CGVector(
                 dx: cos(angle) * speed,
                 dy: sin(angle) * speed
@@ -887,7 +938,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                 let baseAngle = atan2(baseDirection.dy, baseDirection.dx)
                 let jitter = CGFloat.random(in: (-.pi / 6)...(.pi / 6))
                 let angle = baseAngle + jitter
-                let speed = GameConfig.ballInitialSpeed
+                let speed = scaledBallInitialSpeed
                 body.velocity = CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed)
             }
         }
@@ -908,7 +959,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             var angle = atan2(v.dy, v.dx)
             let jitter = CGFloat.random(in: (-.pi / 24)...(.pi / 24))
             angle += jitter
-            let newSpeed = max(speed, GameConfig.ballInitialSpeed)
+            let newSpeed = max(speed, scaledBallInitialSpeed)
             body.velocity = CGVector(dx: cos(angle) * newSpeed, dy: sin(angle) * newSpeed)
         }
     }
@@ -937,8 +988,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func finishRotation(by angle: CGFloat) {
-        physicsWorld.speed = 1
-        isRotationInProgress = false
         multiplier = max(1, multiplier - 1)
         hud.update(score: score, multiplier: multiplier, lives: lives)
 
@@ -959,6 +1008,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         storedBallVelocities.removeAll()
 
+        // Resume physics after layout adjustments to avoid paddle misses near rotation.
+        physicsWorld.speed = 1
+        isRotationInProgress = false
         restoreBallVelocityIfStalled()
 
         rotationInterval = max(7, rotationInterval * 0.93)
@@ -974,9 +1026,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             return
         }
 
-        let limit: CGFloat = 48
+        let limit: CGFloat = scaled(48)
         let bounds = currentPlayfieldBounds
-        let boundsWithMargin = bounds.insetBy(dx: -16, dy: -16)
+        let boundsWithMargin = bounds.insetBy(dx: -scaled(16), dy: -scaled(16))
 
         let localEdgeMid = CGPoint(x: bounds.midX, y: bounds.minY)
         let localCenter = CGPoint(x: bounds.midX, y: bounds.midY)
@@ -1024,8 +1076,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
 
             body.velocity = body.velocity.limited(
-                minSpeed: GameConfig.ballInitialSpeed * 0.75,
-                maxSpeed: GameConfig.ballMaximumSpeed
+                minSpeed: scaledBallMinimumSpeed,
+                maxSpeed: scaledBallMaximumSpeed
             )
         }
     }
@@ -1106,11 +1158,11 @@ private func configureParallax(for rect: CGRect) {
             let (parallax, speed, alpha, colors, birthRate, scale) = entry
             let layer = makeStarLayer(
                 parallax: parallax,
-                speed: speed,
+                speed: speed * metrics.scale,
                 alpha: alpha,
                 colors: colors,
                 birthRate: birthRate,
-                baseScale: scale,
+                baseScale: scale * metrics.scale,
                 rect: rect
             )
             layer.zPosition = CGFloat(-4 + index)
@@ -1131,8 +1183,8 @@ private func configureParallax(for rect: CGRect) {
         let emitter = SKEmitterNode()
         emitter.particleTexture = Self.starTexture
         emitter.particleBirthRate = birthRate
-        let absoluteSpeed = max(speed, 12)
-        let travelDistance = rect.height + 80
+        let absoluteSpeed = max(speed, scaled(12))
+        let travelDistance = rect.height + scaled(80)
         emitter.particleLifetime = travelDistance / absoluteSpeed
         emitter.particleAlpha = alpha
         emitter.particleAlphaRange = 0.28
@@ -1143,11 +1195,11 @@ private func configureParallax(for rect: CGRect) {
         emitter.particleSpeedRange = absoluteSpeed * 0.12
         emitter.emissionAngle = -.pi / 2
         emitter.emissionAngleRange = .pi / 24
-        emitter.particleScale = baseScale + 0.18 * parallax
+        emitter.particleScale = baseScale + scaled(0.18) * parallax
         emitter.particleScaleRange = baseScale * 0.65
-        emitter.particleScaleSpeed = -0.01
-        emitter.particlePositionRange = CGVector(dx: rect.width + 40, dy: rect.height * 0.1)
-        emitter.position = CGPoint(x: 0, y: rect.height / 2 + 24)
+        emitter.particleScaleSpeed = -scaled(0.01)
+        emitter.particlePositionRange = CGVector(dx: rect.width + scaled(40), dy: rect.height * 0.1)
+        emitter.position = CGPoint(x: 0, y: rect.height / 2 + scaled(24))
         emitter.advanceSimulationTime(Double(travelDistance / absoluteSpeed))
         emitter.particleBlendMode = .add
 
@@ -1213,8 +1265,8 @@ private func configureParallax(for rect: CGRect) {
 
     private func currentPaddleEdgeLayout() -> PaddleEdgeLayout {
         let rect = currentPlayfieldBounds
-        let lane = GameConfig.paddleLaneInset
-        let edge = GameConfig.paddleEdgeInset
+        let lane = scaled(GameConfig.paddleLaneInset)
+        let edge = scaled(GameConfig.paddleEdgeInset)
 
         return PaddleEdgeLayout(
             start: CGPoint(x: rect.minX + edge, y: rect.minY + lane),
@@ -1237,7 +1289,7 @@ private func configureParallax(for rect: CGRect) {
             physicsWorld.speed = 0
             hud.showMessage(
                 "Ball Lost",
-                fontSize: GameConfig.ballLostMessageFontSize,
+                fontSize: scaled(GameConfig.ballLostMessageFontSize),
                 duration: GameConfig.ballRespawnDelayAfterMiss
             )
             clearAdditionalBalls()
@@ -1388,7 +1440,7 @@ private func configureParallax(for rect: CGRect) {
         let interiorDot = contactVector.dx * interiorDirection.dx + contactVector.dy * interiorDirection.dy
         if interiorDot < 0 {
             // If the ball contacted the underside/outside, keep it heading outward to avoid stickiness.
-            let speed = max(body.velocity.magnitude, GameConfig.ballInitialSpeed)
+            let speed = max(body.velocity.magnitude, scaledBallInitialSpeed)
             let outwardDir = contactVector.normalized
             body.velocity = CGVector(dx: outwardDir.dx * speed, dy: outwardDir.dy * speed)
             return
@@ -1397,18 +1449,19 @@ private func configureParallax(for rect: CGRect) {
         let baseAngle = orientationBaseAngle()
         let canonicalImpact = contactVector.rotated(by: -baseAngle)
         let axisSign: CGFloat = -1
-        let maxOffset = GameConfig.paddleSize.width / 2
+        let maxOffset = scaled(GameConfig.paddleSize.width / 2)
         let normalized = (canonicalImpact.dx * axisSign / maxOffset).clamped(to: CGFloat(-1)...CGFloat(1))
-        let speed = max(body.velocity.magnitude, GameConfig.ballInitialSpeed)
+        let speed = max(body.velocity.magnitude, scaledBallInitialSpeed)
         let angleOffset = normalized * (.pi / 4)
         let newAngle = baseAngle + (.pi / 2) + angleOffset
         body.velocity = CGVector(dx: cos(newAngle) * speed, dy: sin(newAngle) * speed)
 
         // Light shake on paddle hit (rate-limited to avoid buzz).
         if paddleHitShakeCooldown == 0 {
+            let offset = scaled(2)
             let shake = SKAction.sequence([
-                .moveBy(x: 0, y: 2, duration: 0.04),
-                .moveBy(x: 0, y: -2, duration: 0.04)
+                .moveBy(x: 0, y: offset, duration: 0.04),
+                .moveBy(x: 0, y: -offset, duration: 0.04)
             ])
             shake.timingMode = .easeInEaseOut
             paddle.run(shake, withKey: "paddleShake")
@@ -1432,9 +1485,15 @@ private func configureParallax(for rect: CGRect) {
         )
     }
 
+    private func adjustedScore(_ value: Int) -> Int {
+        let adjusted = Double(value) * difficulty.scoreMultiplier
+        return Int(adjusted.rounded(.toNearestOrAwayFromZero))
+    }
+
     private func addScore(for brick: BrickNode) {
         let bonus = brick.isExplosive ? GameConfig.scorePerChainBonus : 0
-        let delta = (brick.scoreValue + bonus) * multiplier
+        let baseDelta = (brick.scoreValue + bonus) * multiplier
+        let delta = adjustedScore(baseDelta)
         score += delta
         hud.update(score: score, multiplier: multiplier, lives: lives)
         hud.animateScoreBoost(delta: delta)
@@ -1442,12 +1501,12 @@ private func configureParallax(for rect: CGRect) {
     }
 
     private func runExplosion(at point: CGPoint, explosive: Bool) {
-        let radius: CGFloat = explosive ? 76 : 42
+        let radius: CGFloat = scaled(explosive ? 76 : 42)
         let pulse = SKShapeNode(circleOfRadius: radius)
         pulse.position = point
         pulse.strokeColor = SKColor(red: 1.0, green: 0.3, blue: 0.12, alpha: 0.55)
         pulse.fillColor = SKColor(red: 1.0, green: 0.3, blue: 0.05, alpha: 0.2)
-        pulse.lineWidth = 2.4
+        pulse.lineWidth = scaled(2.4)
         pulse.alpha = 0.95
         pulse.zPosition = 15
         pulse.blendMode = .add
@@ -1478,8 +1537,9 @@ private func configureParallax(for rect: CGRect) {
     }
 
     private func triggerExplosionChain(from point: CGPoint, radius: CGFloat) {
+        let scaledRadius = scaled(radius)
         let affected = brickLayer.children.compactMap { $0 as? BrickNode }.filter { brick in
-            brick.position.distance(to: point) <= radius && !brick.isUnbreakable
+            brick.position.distance(to: point) <= scaledRadius && !brick.isUnbreakable
         }
 
         for target in affected {
@@ -1619,7 +1679,7 @@ private func configureParallax(for rect: CGRect) {
     private func makeTransitionLabel(text: String) -> SKLabelNode {
         let label = SKLabelNode(fontNamed: "Menlo")
         label.text = text.uppercased()
-        label.fontSize = 26
+        label.fontSize = scaled(26)
         label.fontColor = SKColor.white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
@@ -1662,7 +1722,7 @@ private func configureParallax(for rect: CGRect) {
     }
 
     private func clampBallsWithinPlayfield() {
-        let bounds = currentPlayfieldBounds.insetBy(dx: GameConfig.ballRadius, dy: GameConfig.ballRadius)
+        let bounds = currentPlayfieldBounds.insetBy(dx: scaled(GameConfig.ballRadius), dy: scaled(GameConfig.ballRadius))
         guard bounds.width > 0, bounds.height > 0 else { return }
         for ballNode in activeBalls {
             let clampedX = ballNode.position.x.clamped(to: bounds.minX...bounds.maxX)
@@ -1709,10 +1769,10 @@ private func configureParallax(for rect: CGRect) {
         isBallRespawning = true
 
         let steps: [(String, TimeInterval, CGFloat)] = [
-            ("Get READY", 0.9, 19),
-            ("3", 0.65, 30),
-            ("2", 0.65, 30),
-            ("1", 0.65, 30)
+            ("Get READY", 0.9, scaled(19)),
+            ("3", 0.65, scaled(30)),
+            ("2", 0.65, scaled(30)),
+            ("1", 0.65, scaled(30))
         ]
 
         var actions: [SKAction] = []
@@ -1725,7 +1785,7 @@ private func configureParallax(for rect: CGRect) {
         }
 
         actions.append(.run { [weak self] in
-            self?.animateCountdown(text: "Go!", fontSize: 24, duration: 0.55)
+            self?.animateCountdown(text: "Go!", fontSize: self?.scaled(24) ?? 24, duration: 0.55)
         })
         actions.append(.wait(forDuration: 0.45))
         actions.append(.run { [weak self] in
@@ -1762,17 +1822,17 @@ private func configureParallax(for rect: CGRect) {
             SKColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1),
             SKColor(red: 0.65, green: 0.1, blue: 0.03, alpha: 1)
         ], times: [0, 0.4, 1])
-        emitter.particleSpeed = big ? 420 : 300
-        emitter.particleSpeedRange = big ? 220 : 160
+        emitter.particleSpeed = scaled(big ? 420 : 300)
+        emitter.particleSpeedRange = scaled(big ? 220 : 160)
         emitter.emissionAngleRange = .pi * 2
-        emitter.particleScale = big ? 0.68 : 0.52
-        emitter.particleScaleRange = big ? 0.42 : 0.32
-        emitter.particleScaleSpeed = -1.4
+        emitter.particleScale = scaled(big ? 0.68 : 0.52)
+        emitter.particleScaleRange = scaled(big ? 0.42 : 0.32)
+        emitter.particleScaleSpeed = -scaled(1.4)
         emitter.particleRotationRange = .pi * 2
         emitter.particleRotationSpeed = .pi * 1.9
         emitter.particleBlendMode = .add
         emitter.zPosition = 16
-        emitter.particlePositionRange = CGVector(dx: 6, dy: 6)
+        emitter.particlePositionRange = CGVector(dx: scaled(6), dy: scaled(6))
         return emitter
     }
 
@@ -1792,20 +1852,28 @@ private func configureParallax(for rect: CGRect) {
             SKColor(red: 1.0, green: 0.35, blue: 0.25, alpha: 1),
             SKColor(red: 0.35, green: 0.05, blue: 0.02, alpha: 0.8)
         ], times: [0, 0.5, 1])
-        emitter.particleSpeed = big ? 520 : 340
-        emitter.particleSpeedRange = big ? 160 : 120
+        emitter.particleSpeed = scaled(big ? 520 : 340)
+        emitter.particleSpeedRange = scaled(big ? 160 : 120)
         emitter.emissionAngleRange = .pi * 2
-        emitter.particleScale = big ? 0.38 : 0.28
-        emitter.particleScaleRange = big ? 0.22 : 0.18
-        emitter.particleScaleSpeed = -0.45
+        emitter.particleScale = scaled(big ? 0.38 : 0.28)
+        emitter.particleScaleRange = scaled(big ? 0.22 : 0.18)
+        emitter.particleScaleSpeed = -scaled(0.45)
         emitter.particleRotationRange = .pi * 2
         emitter.particleRotationSpeed = .pi
         emitter.particleBlendMode = .add
         emitter.xAcceleration = 0
-        emitter.yAcceleration = -420
-        emitter.particlePositionRange = CGVector(dx: 4, dy: 4)
+        emitter.yAcceleration = -scaled(420)
+        emitter.particlePositionRange = CGVector(dx: scaled(4), dy: scaled(4))
         emitter.zPosition = 16
         return emitter
+    }
+
+    private func scaled(_ value: CGFloat) -> CGFloat {
+        metrics.scaled(value)
+    }
+
+    private func scaled(_ size: CGSize) -> CGSize {
+        metrics.scaled(size)
     }
 }
 

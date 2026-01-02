@@ -22,13 +22,7 @@ This document captures the current state of the Apple Watch brick-breaker protot
 - **Settings overlay**: Gear on the start screen opens a settings sheet with sound on/off, haptics on/off, and a crown sensitivity slider (stored in `@AppStorage`; reset button removed; toggles share tint; footer copy added).
 
 ## Known Issues / TODO
-1. **Audio & music** – Background loops (start + gameplay) now run via `AVAudioPlayer` (ambient; respects silent mode). Still need momentary SFX/haptics (hits, drops, rotation, countdown) and a quick crackle check on simulator.
-2. **Balance** – Tune ball speed ramp, drop rates, and gun cadence on device; ensure top-row spacing stays readable across watch sizes.
-3. **HUD polish** – Further refine score/multiplier FX, add hit/miss/drop feedback, and wire haptics.
-4. **Performance validation** – Profile particle-heavy moments (explosions, lasers, fireworks) on real hardware.
-5. **Testing** – Add unit tests for level generator (fill rules, seeding), geometry helpers, and scoring math.
-6. **Music volume control** – Start-screen crown volume HUD now clamps to 0–100% with buffered raw values; retest on hardware to ensure no edge wrap/stickiness remains.
-7. **UI positioning experiments** – Gear is currently bottom-left (experiment); settings close button uses nav bar; revisit final placement/spacing once verified on device.
+Tracked in `tasks.md`.
 
 ## Next Steps
 1. Finish audio polish: add SFX/haptics for hits/misses/rotations and confirm simulator/device audio is clean.

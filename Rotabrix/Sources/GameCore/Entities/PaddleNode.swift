@@ -1,11 +1,17 @@
 import SpriteKit
 
 final class PaddleNode: SKShapeNode {
-    private let baseSize: CGSize
+    private var baseSize: CGSize
+    private var cornerRadius: CGFloat
+    private var snapDistance: CGFloat
+    private var scale: CGFloat
     private(set) var widthMultiplier: CGFloat = 1
 
-    init(size: CGSize) {
+    init(size: CGSize, cornerRadius: CGFloat, snapDistance: CGFloat, scale: CGFloat) {
         self.baseSize = size
+        self.cornerRadius = cornerRadius
+        self.snapDistance = snapDistance
+        self.scale = scale
         super.init()
         configureAppearance()
         applySize(multiplier: 1)
@@ -27,7 +33,7 @@ final class PaddleNode: SKShapeNode {
         position.x += dx * lerpFactor
         position.y += dy * lerpFactor
 
-        if hypot(target.x - position.x, target.y - position.y) <= GameConfig.paddleSnapDistance {
+        if hypot(target.x - position.x, target.y - position.y) <= snapDistance {
             position = target
         }
     }
@@ -36,11 +42,20 @@ final class PaddleNode: SKShapeNode {
         applySize(multiplier: multiplier)
     }
 
+    func updateMetrics(size: CGSize, cornerRadius: CGFloat, snapDistance: CGFloat, scale: CGFloat) {
+        baseSize = size
+        self.cornerRadius = cornerRadius
+        self.snapDistance = snapDistance
+        self.scale = scale
+        configureAppearance()
+        applySize(multiplier: widthMultiplier)
+    }
+
     private func configureAppearance() {
         fillColor = SKColor(red: 0.18, green: 0.96, blue: 0.61, alpha: 0.95)
         strokeColor = SKColor.white.withAlphaComponent(0.3)
-        lineWidth = 1
-        glowWidth = 2
+        lineWidth = 1 * scale
+        glowWidth = 2 * scale
         name = "paddle"
     }
 
@@ -48,7 +63,7 @@ final class PaddleNode: SKShapeNode {
         widthMultiplier = max(0.2, multiplier)
         let size = CGSize(width: baseSize.width * widthMultiplier, height: baseSize.height)
         let rect = CGRect(origin: CGPoint(x: -size.width / 2, y: -size.height / 2), size: size)
-        let path = CGPath(roundedRect: rect, cornerWidth: GameConfig.paddleCornerRadius, cornerHeight: GameConfig.paddleCornerRadius, transform: nil)
+        let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
         self.path = path
 
         physicsBody = SKPhysicsBody(rectangleOf: size)

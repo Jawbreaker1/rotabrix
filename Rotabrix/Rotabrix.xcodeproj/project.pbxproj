@@ -75,6 +75,7 @@
 				Entities/BrickNode.swift,
 				Entities/PaddleNode.swift,
 				GameConfig.swift,
+				GameMetrics.swift,
 				GameHUDNode.swift,
 				GameScene.swift,
 				LevelGenerator.swift,

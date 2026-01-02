@@ -2,18 +2,28 @@ import SpriteKit
 import CoreGraphics
 
 final class GameHUDNode: SKNode {
-    private let statusBackground = SKShapeNode(rectOf: CGSize(width: 148, height: 46), cornerRadius: 12)
+    private let statusBackground: SKShapeNode
     private let scoreLabel = SKLabelNode(fontNamed: "Menlo")
     private let livesLabel = SKLabelNode(fontNamed: "Menlo")
     private let multiplierLabel = SKLabelNode(fontNamed: "Menlo")
     private let messageLabel = SKLabelNode(fontNamed: "Menlo")
+    private var scale: CGFloat
 
     override init() {
+        self.scale = 1
+        self.statusBackground = SKShapeNode(rectOf: CGSize(width: 148, height: 46), cornerRadius: 12)
         super.init()
         setup()
     }
 
+    convenience init(scale: CGFloat) {
+        self.init()
+        updateScale(scale)
+    }
+
     required init?(coder: NSCoder) {
+        self.scale = 1
+        self.statusBackground = SKShapeNode(rectOf: CGSize(width: 148, height: 46), cornerRadius: 12)
         super.init(coder: coder)
         setup()
     }
@@ -21,32 +31,32 @@ final class GameHUDNode: SKNode {
     private func setup() {
         statusBackground.fillColor = SKColor.black.withAlphaComponent(0.35)
         statusBackground.strokeColor = SKColor.white.withAlphaComponent(0.15)
-        statusBackground.lineWidth = 1
+        statusBackground.lineWidth = 1 * scale
         statusBackground.zPosition = -1
         addChild(statusBackground)
 
-        scoreLabel.fontSize = 14
+        scoreLabel.fontSize = 14 * scale
         scoreLabel.horizontalAlignmentMode = .left
         scoreLabel.verticalAlignmentMode = .center
         scoreLabel.text = "Score: 0"
         scoreLabel.fontColor = SKColor.white
         addChild(scoreLabel)
 
-        multiplierLabel.fontSize = 14
+        multiplierLabel.fontSize = 14 * scale
         multiplierLabel.horizontalAlignmentMode = .center
         multiplierLabel.verticalAlignmentMode = .center
         multiplierLabel.text = "x1"
         multiplierLabel.fontColor = SKColor(red: 0.18, green: 0.95, blue: 0.78, alpha: 1)
         addChild(multiplierLabel)
 
-        livesLabel.fontSize = 13
+        livesLabel.fontSize = 13 * scale
         livesLabel.horizontalAlignmentMode = .left
         livesLabel.verticalAlignmentMode = .center
         livesLabel.text = "Lives: 3"
         livesLabel.fontColor = SKColor.white
         addChild(livesLabel)
 
-        messageLabel.fontSize = 16
+        messageLabel.fontSize = 16 * scale
         messageLabel.fontColor = SKColor.white.withAlphaComponent(0.85)
         messageLabel.horizontalAlignmentMode = .center
         messageLabel.verticalAlignmentMode = .center
@@ -61,21 +71,26 @@ final class GameHUDNode: SKNode {
     }
 
     func layout(in rect: CGRect) {
-        let top = rect.maxY - 18
+        let top = rect.maxY - 18 * scale
         let centerX = rect.midX
-        scoreLabel.position = CGPoint(x: rect.minX + 12, y: top)
-        livesLabel.position = CGPoint(x: rect.minX + 12, y: top - 18)
+        scoreLabel.position = CGPoint(x: rect.minX + 12 * scale, y: top)
+        livesLabel.position = CGPoint(x: rect.minX + 12 * scale, y: top - 18 * scale)
         multiplierLabel.position = CGPoint(x: centerX, y: top)
 
-        let backgroundWidth = max(120, min(rect.width - 16, 200))
-        statusBackground.path = CGPath(roundedRect: CGRect(x: -backgroundWidth / 2, y: -27, width: backgroundWidth, height: 56), cornerWidth: 12, cornerHeight: 12, transform: nil)
-        statusBackground.position = CGPoint(x: centerX, y: top - 16)
+        let backgroundWidth = max(120 * scale, min(rect.width - 16 * scale, 200 * scale))
+        statusBackground.path = CGPath(
+            roundedRect: CGRect(x: -backgroundWidth / 2, y: -27 * scale, width: backgroundWidth, height: 56 * scale),
+            cornerWidth: 12 * scale,
+            cornerHeight: 12 * scale,
+            transform: nil
+        )
+        statusBackground.position = CGPoint(x: centerX, y: top - 16 * scale)
         messageLabel.position = CGPoint(x: centerX, y: rect.midY)
     }
 
-    func showMessage(_ text: String, fontSize: CGFloat = 16, duration: TimeInterval = 1.2) {
+    func showMessage(_ text: String, fontSize: CGFloat? = nil, duration: TimeInterval = 1.2) {
         messageLabel.removeAllActions()
-        messageLabel.fontSize = fontSize
+        messageLabel.fontSize = fontSize ?? (16 * scale)
         messageLabel.text = text
         messageLabel.run(.sequence([
             .fadeAlpha(to: 1, duration: 0.15),
@@ -135,5 +150,14 @@ final class GameHUDNode: SKNode {
         ])
         bump.timingMode = .easeInEaseOut
         scoreLabel.run(bump, withKey: "scoreBump")
+    }
+
+    func updateScale(_ scale: CGFloat) {
+        self.scale = scale
+        statusBackground.lineWidth = 1 * scale
+        scoreLabel.fontSize = 14 * scale
+        multiplierLabel.fontSize = 14 * scale
+        livesLabel.fontSize = 13 * scale
+        messageLabel.fontSize = 16 * scale
     }
 }

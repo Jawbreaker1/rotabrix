@@ -3,17 +3,17 @@ import SpriteKit
 final class DropNode: SKShapeNode {
     let descriptor: DropDescriptor
 
-    init(descriptor: DropDescriptor) {
+    init(descriptor: DropDescriptor, scale: CGFloat) {
         self.descriptor = descriptor
 
-        let size = CGSize(width: 16, height: 16)
+        let size = CGSize(width: 16 * scale, height: 16 * scale)
         let rect = CGRect(origin: CGPoint(x: -size.width / 2, y: -size.height / 2), size: size)
-        let path = CGPath(roundedRect: rect, cornerWidth: 5, cornerHeight: 5, transform: nil)
+        let path = CGPath(roundedRect: rect, cornerWidth: 5 * scale, cornerHeight: 5 * scale, transform: nil)
 
         super.init()
 
         self.path = path
-        lineWidth = 1.2
+        lineWidth = 1.2 * scale
         glowWidth = 0
         isAntialiased = true
         fillColor = DropNode.fillColor(for: descriptor.kind)
@@ -21,7 +21,7 @@ final class DropNode: SKShapeNode {
         name = "drop"
 
         let label = SKLabelNode(fontNamed: "Menlo")
-        label.fontSize = 10
+        label.fontSize = 10 * scale
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center

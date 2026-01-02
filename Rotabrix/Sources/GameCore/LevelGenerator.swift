@@ -49,10 +49,10 @@ final class LevelGenerator {
         levelIndex = 1
     }
 
-    func nextLayout(for size: CGSize, seed: UInt64? = nil) -> LevelLayout {
+    func nextLayout(for size: CGSize, metrics: GameMetrics, seed: UInt64? = nil) -> LevelLayout {
         _ = seed // seed kept for compatibility; layouts are predetermined
         let pattern = Self.prebuiltPatterns[min(levelIndex - 1, Self.prebuiltPatterns.count - 1)]
-        let bricks = buildBricks(size: size, pattern: pattern)
+        let bricks = buildBricks(size: size, pattern: pattern, metrics: metrics)
         let layout = LevelLayout(
             bricks: bricks,
             seed: UInt64(levelIndex),
@@ -63,22 +63,22 @@ final class LevelGenerator {
         return layout
     }
 
-    private func buildBricks(size: CGSize, pattern: LevelPattern) -> [BrickDescriptor] {
+    private func buildBricks(size: CGSize, pattern: LevelPattern, metrics: GameMetrics) -> [BrickDescriptor] {
         var descriptors: [BrickDescriptor] = []
         let columns = GameConfig.brickColumns
         let rows = GameConfig.brickRows
 
         let usableWidth = size.width
-        let topMargin = min(GameConfig.brickTopMargin, size.height * GameConfig.brickTopMarginFraction)
-        let baseBottomMargin = GameConfig.paddleLaneInset + GameConfig.paddleSize.height * 1.5 + GameConfig.brickBottomMargin
+        let topMargin = min(metrics.scaled(GameConfig.brickTopMargin), size.height * GameConfig.brickTopMarginFraction)
+        let baseBottomMargin = metrics.scaled(GameConfig.paddleLaneInset + GameConfig.paddleSize.height * 1.5 + GameConfig.brickBottomMargin)
         let bottomMargin = min(baseBottomMargin, size.height * GameConfig.brickBottomMarginFraction)
-        let usableHeight = max(40, size.height - topMargin - bottomMargin)
+        let usableHeight = max(metrics.scaled(40), size.height - topMargin - bottomMargin)
 
         let cellWidth = usableWidth / CGFloat(columns)
-        let brickWidth = cellWidth - GameConfig.brickSpacing
+        let brickWidth = cellWidth - metrics.scaled(GameConfig.brickSpacing)
         let rawCellHeight = usableHeight / CGFloat(rows)
-        let cellHeight = rawCellHeight.clamped(to: GameConfig.brickCellHeightMin...GameConfig.brickCellHeightMax)
-        let brickHeight = max(10, cellHeight - GameConfig.brickSpacing)
+        let cellHeight = rawCellHeight.clamped(to: metrics.scaled(GameConfig.brickCellHeightMin)...metrics.scaled(GameConfig.brickCellHeightMax))
+        let brickHeight = max(metrics.scaled(10), cellHeight - metrics.scaled(GameConfig.brickSpacing))
         let startY = size.height / 2 - topMargin - cellHeight / 2
         let bottomLimit = -size.height / 2 + bottomMargin
 

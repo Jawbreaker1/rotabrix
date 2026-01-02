@@ -16,8 +16,20 @@ struct ContentView: View {
     @AppStorage("rotabrix.soundEnabled") private var soundEnabled: Bool = true
     @AppStorage("rotabrix.hapticsEnabled") private var hapticsEnabled: Bool = true
     @AppStorage("rotabrix.crownSensitivity") private var crownSensitivity: Double = GameConfig.defaultCrownSensitivity
+    @AppStorage("rotabrix.difficulty") private var difficultyRaw: String = GameDifficulty.medium.rawValue
     @State private var showingSettings = false
     private let audioManager = AudioManager.shared
+
+    private var difficulty: GameDifficulty {
+        GameDifficulty(rawValue: difficultyRaw) ?? .medium
+    }
+
+    private var difficultyBinding: Binding<GameDifficulty> {
+        Binding(
+            get: { GameDifficulty(rawValue: difficultyRaw) ?? .medium },
+            set: { difficultyRaw = $0.rawValue }
+        )
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -55,6 +67,7 @@ struct ContentView: View {
                             soundEnabled: $soundEnabled,
                             hapticsEnabled: $hapticsEnabled,
                             crownSensitivity: $crownSensitivity,
+                            difficulty: difficultyBinding,
                             onClose: { showingSettings = false }
                         )
                         .navigationTitle("Settings")
@@ -105,6 +118,10 @@ struct ContentView: View {
             .onChange(of: crownSensitivity) { newValue in
                 crownSystem.setSensitivity(newValue)
             }
+            .onChange(of: difficultyRaw) { newValue in
+                let difficulty = GameDifficulty(rawValue: newValue) ?? .medium
+                controller.setDifficulty(difficulty)
+            }
             .onChange(of: scenePhase) { phase in
                 switch phase {
                 case .active:
@@ -128,6 +145,7 @@ struct ContentView: View {
                 crownSystem.setSensitivity(crownSensitivity)
                 controller.updatePaddle(normalized: 0.5)
                 controller.setStartScreenActive(true)
+                controller.setDifficulty(difficulty)
                 audioManager.preparePlayers()
                 audioManager.setVolume(musicVolume)
                 audioManager.setEnabled(soundEnabled)
@@ -567,6 +585,7 @@ private struct SettingsView: View {
     @Binding var soundEnabled: Bool
     @Binding var hapticsEnabled: Bool
     @Binding var crownSensitivity: Double
+    @Binding var difficulty: GameDifficulty
     let onClose: () -> Void
 
     private var sensitivityLabel: String {
@@ -606,6 +625,27 @@ private struct SettingsView: View {
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "speedometer")
+                                    .foregroundColor(.white)
+                                Text("Difficulty")
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+
+                            DifficultySelector(selection: $difficulty)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
                                 )
                         )
 
@@ -654,6 +694,68 @@ private struct SettingsView: View {
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             }
         }
+    }
+}
+
+private struct DifficultySelector: View {
+    @Binding var selection: GameDifficulty
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            optionRow(horizontal: true)
+            optionRow(horizontal: false)
+        }
+    }
+
+    @ViewBuilder
+    private func optionRow(horizontal: Bool) -> some View {
+        if horizontal {
+            HStack(spacing: 6) {
+                options
+            }
+        } else {
+            VStack(spacing: 6) {
+                options
+            }
+        }
+    }
+
+    private var options: some View {
+        ForEach(GameDifficulty.allCases) { difficulty in
+            DifficultyOptionButton(
+                title: difficulty.displayName,
+                isSelected: difficulty == selection
+            ) {
+                selection = difficulty
+            }
+        }
+    }
+}
+
+private struct DifficultyOptionButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isSelected ? Color.cyan.opacity(0.35) : Color.white.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(isSelected ? 0.65 : 0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 

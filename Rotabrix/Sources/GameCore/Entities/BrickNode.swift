@@ -4,6 +4,7 @@ final class BrickNode: SKShapeNode {
     let descriptor: BrickDescriptor
     private(set) var hitPoints: Int
     private let auraNode: SKShapeNode
+    private let scale: CGFloat
     var scoreValue: Int { descriptor.kind.baseScore }
 
     var isExplosive: Bool {
@@ -16,21 +17,23 @@ final class BrickNode: SKShapeNode {
         return false
     }
 
-    init(descriptor: BrickDescriptor) {
+    init(descriptor: BrickDescriptor, scale: CGFloat) {
         self.descriptor = descriptor
         self.hitPoints = descriptor.kind.hitPoints
+        self.scale = scale
 
         let size = descriptor.frame.size
         let rect = CGRect(origin: CGPoint(x: -size.width / 2, y: -size.height / 2), size: size)
-        let path = CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil)
-        self.auraNode = BrickNode.makeAuraNode(for: rect)
+        let cornerRadius = 4 * scale
+        let path = CGPath(roundedRect: rect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+        self.auraNode = BrickNode.makeAuraNode(for: rect, scale: scale)
 
         super.init()
 
         self.path = path
-        lineWidth = 1
+        lineWidth = 1 * scale
         strokeColor = SKColor.white.withAlphaComponent(0.25)
-        glowWidth = isExplosive ? 3 : 1
+        glowWidth = (isExplosive ? 3 : 1) * scale
         alpha = isUnbreakable ? 0.7 : 0.95
         name = "brick"
         zPosition = 2
@@ -65,15 +68,15 @@ final class BrickNode: SKShapeNode {
     private func updateAuraColor(using color: SKColor) {
         auraNode.fillColor = color.withAlphaComponent(0.23)
         auraNode.strokeColor = color.withAlphaComponent(0.48)
-        auraNode.lineWidth = 1.0
-        auraNode.glowWidth = 2.2
+        auraNode.lineWidth = 1.0 * scale
+        auraNode.glowWidth = 2.2 * scale
         auraNode.blendMode = .add
     }
 
-    private static func makeAuraNode(for rect: CGRect) -> SKShapeNode {
-        let inset: CGFloat = -1.7
+    private static func makeAuraNode(for rect: CGRect, scale: CGFloat) -> SKShapeNode {
+        let inset: CGFloat = -1.7 * scale
         let auraRect = rect.insetBy(dx: inset, dy: inset)
-        let path = CGPath(roundedRect: auraRect, cornerWidth: 6, cornerHeight: 6, transform: nil)
+        let path = CGPath(roundedRect: auraRect, cornerWidth: 6 * scale, cornerHeight: 6 * scale, transform: nil)
         let node = SKShapeNode(path: path)
         node.zPosition = -1
         node.alpha = 0.88

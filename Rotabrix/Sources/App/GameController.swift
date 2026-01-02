@@ -39,6 +39,10 @@ final class GameController: ObservableObject {
     func setStartScreenActive(_ active: Bool) {
         scene.setStartScreenPresentation(active: active)
     }
+
+    func setDifficulty(_ difficulty: GameDifficulty) {
+        scene.setDifficulty(difficulty)
+    }
 }
 
 extension GameController: GameSceneDelegate {
