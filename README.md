@@ -2,16 +2,19 @@
 
 This document captures the current state of the Apple Watch brick-breaker prototype as of this Codex session so we can pick up quickly next time.
 
-## Recent Updates (2025-12-13)
-- Touch controls now cover the entire screen (safe areas ignored), so taps near/below the paddle register on all watch sizes.
-- Audio resumes after wrist-down/wake via scene phase handling; loops stop when the app backgrounds.
+## Recent Updates (2026-01-02)
+- Gameplay sizing and speeds now scale to small watch resolutions using the Ultra as the reference size.
+- Added difficulty setting (Easy/Normal/Hard) that adjusts ball speed and score payouts.
+- Rotation handling now keeps physics paused until layout is updated to prevent paddle/ball mismatch.
+- Touch controls cover the entire screen (safe areas ignored), so taps near/below the paddle register on all watch sizes.
 - Settings: sound/vibration toggles share one tint, crown slider only, footer text added; gear opens nav-styled sheet.
 - Level 2 now guarantees two drops (paddle grow + paddle shrink); Level 4 now includes multiball plus paddle grow to keep early levels lively.
+- Targeting a 1.0.1 release once small-screen scaling and rotation safety are validated on hardware.
 
 ## What’s Implemented (2025-12-01)
 - **Start/high-score flow**: Start overlay, countdown into play, and a high-score celebration screen with fireworks before returning to start.
 - **Game over flow**: Dedicated Game Over screen shows the final score before returning to start (no fireworks; high-score path bypasses it).
-- **Core gameplay**: SpriteKit scene with Digital Crown + touch controls, paddle easing, ball physics, lives, seeded layouts, and 90°/180° rotations that freeze physics safely. Ball speed ramps per level; bricks fill the top three rows with deterministic but varied patterns (≥50% filled) and even spacing in portrait.
+- **Core gameplay**: SpriteKit scene with Digital Crown + touch controls, paddle easing, ball physics, lives, seeded layouts, and 90°/180° rotations that freeze physics safely. Ball speed ramps per level; bricks fill the top three rows with deterministic but varied patterns (>=50% filled) and even spacing in portrait.
 - **Scoring flair**: Dramatic multiplier bumps, boosted score pop for medium/large hits, tougher-brick nudge animation on ball hits, paddle hit “vibration,” and high-score tracking.
 - **Drops & power-ups**: Extra life, multiball, paddle grow/shrink, forced rotation, gun mode, and point bundles with HUD messaging and rotation-aware collection.
 - **Visual polish**: Gradient backgrounds per level, parallax stars, neon brick halos, ball halo/trail, laser FX, and celebratory fireworks for highscores.
@@ -19,14 +22,15 @@ This document captures the current state of the Apple Watch brick-breaker protot
 - **Crown controls**: Smoothed deltas and noise filtering keep paddle motion predictable across simulator/hardware.
 - **Level order**: Uses a fixed sequence of curated layouts (no randomness). A randomized/daily mode may come later as a separate option.
 - **Audio volume**: Start-screen crown volume control clamps hard to 0–100% with no wraparound; scrolling past the ends no longer flips the volume.
-- **Settings overlay**: Gear on the start screen opens a settings sheet with sound on/off, haptics on/off, and a crown sensitivity slider (stored in `@AppStorage`; reset button removed; toggles share tint; footer copy added).
+- **Settings overlay**: Gear on the start screen opens a settings sheet with sound on/off, haptics on/off, crown sensitivity slider, and difficulty selection (stored in `@AppStorage`).
+- **Resolution scaling**: Game objects and speeds scale based on the watch resolution, keeping the Ultra as the visual reference.
 
 ## Known Issues / TODO
 Tracked in `tasks.md`.
 
 ## Next Steps
-1. Finish audio polish: add SFX/haptics for hits/misses/rotations and confirm simulator/device audio is clean.
-2. Playtest on hardware: confirm ball speed ramp, brick spacing legibility, underside scrape fix, and countdown anchoring feel.
+1. Playtest on hardware: confirm small-screen scaling, difficulty pacing, and rotation safety near the paddle.
+2. Finish audio polish: add SFX/haptics for hits/misses/rotations and confirm simulator/device audio is clean.
 3. Balance passes on drop probabilities and gun timing; verify >50% brick fill per row still holds across watch sizes.
 4. Add targeted unit tests for seeded level layouts and scoring/multiplier increments.
 

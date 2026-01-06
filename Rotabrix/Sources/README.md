@@ -1,11 +1,9 @@
 Sources
 =======
 
-Swift code lives here once the watchOS project scaffolding is created. Suggested grouping:
-- `App/` – SwiftUI App entry point and watch-specific UI.
-- `GameCore/` – SpriteKit scenes, physics, collision handling.
-- `Systems/` – Supporting systems (level generation, scoring, drops, rotation).
-- `Support/` – Shared helpers, extensions, configuration.
+Swift code for the watchOS app lives here. Current grouping:
+- `App/` – SwiftUI shell, settings UI, crown input, and app-level controllers.
+- `GameCore/` – SpriteKit scene, physics, gameplay entities, and level generation.
+- `Support/` – Shared helpers, extensions, and configuration.
 
 Organize gameplay code so it can later be extracted into a Swift package if needed.
-

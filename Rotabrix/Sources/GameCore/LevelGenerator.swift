@@ -133,8 +133,8 @@ final class LevelGenerator {
     // 50 hand-crafted, symmetrical layouts (top 3 rows only).
     private static let prebuiltPatterns: [LevelPattern] = [
         LevelPattern(rows: ["ssttss", "s.xx.s", "s.mm.s"]),
-        LevelPattern(rows: ["ttbctt", "s....s", "ttsstt"]),
-        LevelPattern(rows: ["ssxxss", "..g...", "ssxxss"]),
+        LevelPattern(rows: ["tsbcst", "s....s", "tsssmt"]),
+        LevelPattern(rows: ["ssxxss", "......", "sgxxss"]),
         LevelPattern(rows: ["uussuu", "ubmmbu", "uussuu"]),
         LevelPattern(rows: [".ssll.", "ssttss", ".ssll."]),
         LevelPattern(rows: ["ss..ss", "xx..xx", "ss..ss"]),

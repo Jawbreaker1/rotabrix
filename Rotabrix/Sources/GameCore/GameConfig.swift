@@ -13,7 +13,7 @@ enum GameDifficulty: String, CaseIterable, Identifiable {
         case .easy:
             return "Easy"
         case .medium:
-            return "Medium"
+            return "Normal"
         case .hard:
             return "Hard"
         }

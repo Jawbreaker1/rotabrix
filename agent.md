@@ -45,13 +45,17 @@ Current Files & Directories
 - `Sources/` – Swift source once development begins. Organize into `App`, `GameCore`, `Systems`, `UI`.
 - `Tests/` – Unit tests (use XCTest). Mirror `Sources/` structure.
 
-Recent Session (2025-12-13)
+Recent Session (2026-01-02)
 ---------------------------
 - Early levels juiced: Level 2 includes paddle grow + shrink drops; Level 4 now has multiball + paddle grow.
 - Touch overlay now ignores safe areas so the entire screen responds (fixes dead zone near the paddle).
 - Audio loops stop on background and resume appropriately on wake/active via scene phase handling.
 - Settings tweaks: unified toggle tint, removed crown “reset to default” button, footer copy added; nav bar handles close/time.
 - Start screen gear currently bottom-left (experiment); can revert easily.
+- Gameplay sizes and speeds now scale from the Ultra reference size to keep small watches playable.
+- Difficulty setting (easy/normal/hard) added in Settings, scaling ball speed and scoring.
+- Rotation layout now keeps physics paused until the paddle and bounds are updated.
+- Targeting a 1.0.1 release after device validation on small screens.
 
 Next Setup Tasks
 ----------------
