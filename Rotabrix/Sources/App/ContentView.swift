@@ -17,7 +17,10 @@ struct ContentView: View {
     @AppStorage("rotabrix.hapticsEnabled") private var hapticsEnabled: Bool = true
     @AppStorage("rotabrix.crownSensitivity") private var crownSensitivity: Double = GameConfig.defaultCrownSensitivity
     @AppStorage("rotabrix.difficulty") private var difficultyRaw: String = GameDifficulty.medium.rawValue
+    @AppStorage("rotabrix.gameCenterEnabled") private var gameCenterEnabled: Bool = true
     @State private var showingSettings = false
+    @State private var showingLeaderboard = false
+    @StateObject private var gameCenter = GameCenterManager()
     private let audioManager = AudioManager.shared
 
     private var difficulty: GameDifficulty {
@@ -44,7 +47,9 @@ struct ContentView: View {
                         lastScore: lastScore,
                         volume: $musicVolume,
                         onStart: { startGame() },
-                        onSettings: { showingSettings = true }
+                        onSettings: { showingSettings = true },
+                        onLeaderboard: { showingLeaderboard = true },
+                        gameCenterEnabled: gameCenterEnabled
                     )
                     .allowsHitTesting(!showingSettings)
                     .transition(.opacity)
@@ -66,6 +71,7 @@ struct ContentView: View {
                         SettingsView(
                             soundEnabled: $soundEnabled,
                             hapticsEnabled: $hapticsEnabled,
+                            gameCenterEnabled: $gameCenterEnabled,
                             crownSensitivity: $crownSensitivity,
                             difficulty: difficultyBinding,
                             onClose: { showingSettings = false }
@@ -84,6 +90,9 @@ struct ContentView: View {
                     .transition(.move(edge: .trailing))
                     .zIndex(1)
                 }
+            }
+            .sheet(isPresented: $showingLeaderboard) {
+                LeaderboardView(gameCenter: gameCenter)
             }
             .onChange(of: crownValue) { newValue in
                 let normalized = crownSystem.process(value: newValue)
@@ -114,6 +123,9 @@ struct ContentView: View {
             }
             .onChange(of: hapticsEnabled) { enabled in
                 Haptic.setEnabled(enabled)
+            }
+            .onChange(of: gameCenterEnabled) { enabled in
+                gameCenter.setEnabled(enabled)
             }
             .onChange(of: crownSensitivity) { newValue in
                 crownSystem.setSensitivity(newValue)
@@ -150,6 +162,7 @@ struct ContentView: View {
                 audioManager.setVolume(musicVolume)
                 audioManager.setEnabled(soundEnabled)
                 Haptic.setEnabled(hapticsEnabled)
+                gameCenter.setEnabled(gameCenterEnabled)
                 if soundEnabled {
                     audioManager.playStartScreenLoop()
                 }
@@ -168,6 +181,7 @@ struct ContentView: View {
             }
             .onReceive(controller.$gameOverScore) { score in
                 guard let score else { return }
+                gameCenter.submitScore(score)
                 lastScore = score
                 let isNewHigh = score > highScore
                 if isNewHigh {
@@ -275,6 +289,8 @@ private struct StartScreenView: View {
     @Binding var volume: Double
     let onStart: () -> Void
     let onSettings: () -> Void
+    let onLeaderboard: () -> Void
+    let gameCenterEnabled: Bool
 
     @FocusState private var isVolumeFocused: Bool
     @State private var crownVolumeValue: Double = 0.6
@@ -354,6 +370,18 @@ private struct StartScreenView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 8)
+                .padding(.bottom, max(4, proxy.safeAreaInsets.bottom + 2))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Button(action: onLeaderboard) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(!gameCenterEnabled)
+                .opacity(gameCenterEnabled ? 1 : 0.35)
+                .padding(.trailing, 8)
                 .padding(.bottom, max(4, proxy.safeAreaInsets.bottom + 2))
             }
         }
@@ -584,6 +612,7 @@ private struct NeonTitle: View {
 private struct SettingsView: View {
     @Binding var soundEnabled: Bool
     @Binding var hapticsEnabled: Bool
+    @Binding var gameCenterEnabled: Bool
     @Binding var crownSensitivity: Double
     @Binding var difficulty: GameDifficulty
     let onClose: () -> Void
@@ -614,6 +643,12 @@ private struct SettingsView: View {
 
                             Toggle(isOn: $hapticsEnabled) {
                                 Label("Vibration", systemImage: "waveform.path")
+                                    .foregroundColor(.white)
+                            }
+                            .tint(.cyan)
+
+                            Toggle(isOn: $gameCenterEnabled) {
+                                Label("Game Center", systemImage: "trophy.fill")
                                     .foregroundColor(.white)
                             }
                             .tint(.cyan)

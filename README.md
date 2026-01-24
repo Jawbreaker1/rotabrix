@@ -24,6 +24,7 @@ This document captures the current state of the Apple Watch brick-breaker protot
 - **Audio volume**: Start-screen crown volume control clamps hard to 0–100% with no wraparound; scrolling past the ends no longer flips the volume.
 - **Settings overlay**: Gear on the start screen opens a settings sheet with sound on/off, haptics on/off, crown sensitivity slider, and difficulty selection (stored in `@AppStorage`).
 - **Resolution scaling**: Game objects and speeds scale based on the watch resolution, keeping the Ultra as the visual reference.
+- **Offline-first**: Core gameplay, scoring, and local highscores work fully offline; Game Center is optional and must never block play.
 
 ## Known Issues / TODO
 Tracked in `tasks.md`.

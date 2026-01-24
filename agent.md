@@ -30,6 +30,7 @@ Non-Negotiables
 - Keep frame times low; profile SpriteKit nodes and reuse assets.
 - Respect accessibility: high-contrast option, Reduce Motion variants, color-blind palettes.
 - Instant restart flow; minimal friction between runs.
+- Offline-first: gameplay must be fully playable without network or Game Center; GC is optional.
 
 Workflow Notes
 --------------

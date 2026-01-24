@@ -3,7 +3,7 @@
 Investigate and update each item with findings and next actions.
 
 ## P0
-- [ ] Small watch screens: layout feels too large and cramped on small Apple Watch sizes; brick height scaling looks off. (Scaling pass implemented for sizes and speeds; needs device validation.)
+- [ ] Small watch screens: gameplay sizing validated on small screens; start screen + settings menu still use fixed sizing and need responsive scaling to match gameplay.
 
 ## P1
 - [ ] Rotation near paddle: during rotation, the ball can end up behind or pass through the paddle when close to it. (Paused physics through finishRotation; needs validation.)
@@ -15,9 +15,11 @@ Investigate and update each item with findings and next actions.
 - [ ] Testing: add unit tests for level generator (fill rules, seeding), geometry helpers, scoring math.
 - [ ] Music volume control: retest start-screen crown volume HUD clamp on hardware to ensure no edge wrap/stickiness.
 - [ ] UI positioning experiments: revisit gear placement and settings close button positioning after device verification.
+- [ ] Offline-first guarantee: verify all gameplay flows remain fully playable without network/Game Center; GC features must fail gracefully.
 
 ## Investigation Notes
 - Small watch screens: current sizing is mostly fixed (paddle, ball, drops, brick spacing/heights, HUD) so smaller screens get the same pixel sizes as Ultra; LevelGenerator clamps brick cell height to 24 and brick height to 18, so bricks never scale down (e.g., 136x170/38mm and 205x251/Ultra both end up at 18px brick height); HUD status background height is fixed at 56, which eats a large share of the vertical playfield on compact sizes.
 - Small watch screens: added an Ultra-based scale factor (min dimension ratio, max 1.0) and applied it to gameplay sizes + speeds; needs device/simulator verification on smallest sizes. SwiftUI overlays (start/game over/high score/settings) are not scaled yet.
+- Small watch screens: gameplay scaling looks good on small devices; start screen and settings still need responsive sizing.
 - Rotation near paddle: finishRotation repositions the paddle (applyPaddleLayout) after rotation while physics is active and without adjusting ball positions relative to the new paddle edge; combined with bounds swapping for landscape, this can move the paddle relative to the ball and leave the ball behind/inside the paddle.
 - Difficulty: settings now persist easy/normal/hard; easy scales speed/score to 0.5x, hard scales to 1.5x. Needs balancing on device.

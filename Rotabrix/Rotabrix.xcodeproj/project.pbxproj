@@ -100,6 +100,9 @@
 				Audio/AudioManager.swift,
 				ContentView.swift,
 				CrownInputSystem.swift,
+				GameCenter/GameCenterConfig.swift,
+				GameCenter/GameCenterManager.swift,
+				GameCenter/LeaderboardView.swift,
 				GameController.swift,
 			);
 			target = C0FB34E62E8036DF00BC7785 /* Rotabrix Watch App */;
@@ -571,6 +574,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Rotabrix Watch App/Rotabrix Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
@@ -604,6 +608,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Rotabrix Watch App/Rotabrix Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
@@ -638,7 +643,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
 				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
 				MARKETING_VERSION = 1.1;
@@ -657,7 +662,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = DN6N22AR3X;
 				INFOPLIST_KEY_CFBundleDisplayName = Rotabrix;
 				MARKETING_VERSION = 1.1;
