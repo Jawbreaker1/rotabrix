@@ -21,5 +21,11 @@ Investigate and update each item with findings and next actions.
 - Small watch screens: current sizing is mostly fixed (paddle, ball, drops, brick spacing/heights, HUD) so smaller screens get the same pixel sizes as Ultra; LevelGenerator clamps brick cell height to 24 and brick height to 18, so bricks never scale down (e.g., 136x170/38mm and 205x251/Ultra both end up at 18px brick height); HUD status background height is fixed at 56, which eats a large share of the vertical playfield on compact sizes.
 - Small watch screens: added an Ultra-based scale factor (min dimension ratio, max 1.0) and applied it to gameplay sizes + speeds; needs device/simulator verification on smallest sizes. SwiftUI overlays (start/game over/high score/settings) are not scaled yet.
 - Small watch screens: gameplay scaling looks good on small devices; start screen and settings still need responsive sizing.
+
+## Layout Plan (Start + Settings)
+- Add a SwiftUI overlay scale factor (Ultra reference, clamp <= 1.0) and apply it to spacing, fonts, paddings, and icon sizes.
+- Start screen: move gear/trophy to top corners, reduce spacer usage, and use ViewThatFits for score badges to avoid pushing the Start button off-screen.
+- Settings: reduce extra top padding under the nav bar, scale card padding/corner radius, and keep content scrollable on small screens.
+- Revert strategy: all changes are localized to overlay sizing helpers and layout constants so the previous fixed layout can be restored quickly if needed.
 - Rotation near paddle: finishRotation repositions the paddle (applyPaddleLayout) after rotation while physics is active and without adjusting ball positions relative to the new paddle edge; combined with bounds swapping for landscape, this can move the paddle relative to the ball and leave the ball behind/inside the paddle.
 - Difficulty: settings now persist easy/normal/hard; easy scales speed/score to 0.5x, hard scales to 1.5x. Needs balancing on device.

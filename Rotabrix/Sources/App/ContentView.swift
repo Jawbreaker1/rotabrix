@@ -94,13 +94,13 @@ struct ContentView: View {
             .sheet(isPresented: $showingLeaderboard) {
                 LeaderboardView(gameCenter: gameCenter)
             }
-            .onChange(of: crownValue) { newValue in
+            .onChange(of: crownValue) { _, newValue in
                 let normalized = crownSystem.process(value: newValue)
                 if overlay == .playing {
                     controller.updatePaddle(normalized: CGFloat(normalized))
                 }
             }
-            .onChange(of: overlay) { state in
+            .onChange(of: overlay) { _, state in
                 switch state {
                 case .start:
                     audioManager.playStartScreenLoop()
@@ -108,10 +108,10 @@ struct ContentView: View {
                     audioManager.stopStartScreenLoop()
                 }
             }
-            .onChange(of: musicVolume) { newValue in
+            .onChange(of: musicVolume) { _, newValue in
                 audioManager.setVolume(newValue)
             }
-            .onChange(of: soundEnabled) { enabled in
+            .onChange(of: soundEnabled) { _, enabled in
                 audioManager.setEnabled(enabled)
                 if enabled {
                     if controller.isGameRunning {
@@ -121,20 +121,20 @@ struct ContentView: View {
                     }
                 }
             }
-            .onChange(of: hapticsEnabled) { enabled in
+            .onChange(of: hapticsEnabled) { _, enabled in
                 Haptic.setEnabled(enabled)
             }
-            .onChange(of: gameCenterEnabled) { enabled in
+            .onChange(of: gameCenterEnabled) { _, enabled in
                 gameCenter.setEnabled(enabled)
             }
-            .onChange(of: crownSensitivity) { newValue in
+            .onChange(of: crownSensitivity) { _, newValue in
                 crownSystem.setSensitivity(newValue)
             }
-            .onChange(of: difficultyRaw) { newValue in
+            .onChange(of: difficultyRaw) { _, newValue in
                 let difficulty = GameDifficulty(rawValue: newValue) ?? .medium
                 controller.setDifficulty(difficulty)
             }
-            .onChange(of: scenePhase) { phase in
+            .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
                     audioManager.setEnabled(soundEnabled)
@@ -283,6 +283,28 @@ private enum OverlayState: Equatable {
     case playing
 }
 
+private struct OverlayMetrics {
+    static let referenceSize = CGSize(width: 205, height: 251)
+
+    let scale: CGFloat
+
+    init(size: CGSize) {
+        guard size.width > 0, size.height > 0 else {
+            scale = 1
+            return
+        }
+        let widthScale = size.width / Self.referenceSize.width
+        let heightScale = size.height / Self.referenceSize.height
+        let baseScale = min(widthScale, heightScale)
+        let boosted = baseScale * 1.35
+        scale = min(1.35, boosted)
+    }
+
+    func scaled(_ value: CGFloat) -> CGFloat {
+        value * scale
+    }
+}
+
 private struct StartScreenView: View {
     let highScore: Int
     let lastScore: Int?
@@ -301,7 +323,13 @@ private struct StartScreenView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let topInset = proxy.safeAreaInsets.top
+            let metrics = OverlayMetrics(size: proxy.size)
+            let horizontalPadding = metrics.scaled(16)
+            let verticalPadding = metrics.scaled(18)
+            let iconSize = metrics.scaled(18)
+            let safeTop = proxy.safeAreaInsets.top
+            let iconTopPadding = max(metrics.scaled(6), min(safeTop, metrics.scaled(10)))
+            let hudTopPadding = iconTopPadding + iconSize + metrics.scaled(6)
             ZStack {
                 AngularGradient(
                     gradient: Gradient(colors: [Color.black, Color.purple.opacity(0.6), Color.blue.opacity(0.65), Color.black]),
@@ -311,28 +339,21 @@ private struct StartScreenView: View {
                 .overlay(Color.black.opacity(0.35))
                 .ignoresSafeArea()
 
-                VStack(spacing: 14) {
-                    Spacer(minLength: 24)
+                VStack(spacing: metrics.scaled(14)) {
+                    Spacer(minLength: metrics.scaled(24))
 
-                    NeonTitle(text: "Rotabrix")
+                    NeonTitle(text: "Rotabrix", scale: metrics.scale)
                         .frame(maxWidth: .infinity, alignment: .center)
 
-                    VStack(spacing: 8) {
-                        if let lastScore, lastScore > 0 {
-                            ScoreBadge(label: "Last", value: lastScore)
-                        }
+                    ScoreBlock(lastScore: lastScore, highScore: highScore, scale: metrics.scale)
 
-                    ScoreBadge(label: "High", value: highScore)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    Spacer(minLength: 14)
+                    Spacer(minLength: metrics.scaled(14))
 
                     Button(action: onStart) {
                         Text("Start")
-                            .font(.headline)
-                            .padding(.horizontal, 36)
-                            .padding(.vertical, 10)
+                            .font(.system(size: 18 * metrics.scale, weight: .semibold))
+                            .padding(.horizontal, metrics.scaled(36))
+                            .padding(.vertical, metrics.scaled(10))
                             .background(
                                 Capsule()
                                     .fill(
@@ -342,47 +363,48 @@ private struct StartScreenView: View {
                                             endPoint: .trailing
                                         )
                                     )
-                                    .shadow(color: Color.cyan.opacity(0.65), radius: 8)
+                                    .shadow(color: Color.cyan.opacity(0.65), radius: metrics.scaled(8))
                             )
                             .foregroundColor(Color.black)
                     }
                     .buttonStyle(.plain)
+                    .layoutPriority(1)
 
-                    Spacer(minLength: 24)
+                    Spacer(minLength: metrics.scaled(24))
                 }
                 .frame(height: proxy.size.height)
-                .padding(.vertical, 18)
-                .padding(.horizontal, 16)
+                .padding(.vertical, verticalPadding)
+                .padding(.horizontal, horizontalPadding)
             }
             .overlay(alignment: .topTrailing) {
                 if showVolumeHUD {
-                    VolumeHUDView(volume: volume)
+                    VolumeHUDView(volume: volume, scale: metrics.scale)
                         .transition(.opacity)
-                        .padding(.top, 6)
-                        .padding(.trailing, 8)
+                        .padding(.top, hudTopPadding)
+                        .padding(.trailing, metrics.scaled(8))
                 }
             }
-            .overlay(alignment: .bottomLeading) {
+            .overlay(alignment: .topLeading) {
                 Button(action: onSettings) {
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: iconSize, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
-                .padding(.leading, 8)
-                .padding(.bottom, max(4, proxy.safeAreaInsets.bottom + 2))
+                .padding(.leading, metrics.scaled(8))
+                .padding(.top, iconTopPadding)
             }
-            .overlay(alignment: .bottomTrailing) {
+            .overlay(alignment: .topTrailing) {
                 Button(action: onLeaderboard) {
                     Image(systemName: "trophy.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: iconSize, weight: .semibold))
                         .foregroundColor(.white)
                 }
                 .buttonStyle(.plain)
                 .disabled(!gameCenterEnabled)
                 .opacity(gameCenterEnabled ? 1 : 0.35)
-                .padding(.trailing, 8)
-                .padding(.bottom, max(4, proxy.safeAreaInsets.bottom + 2))
+                .padding(.trailing, metrics.scaled(8))
+                .padding(.top, iconTopPadding)
             }
         }
         .focusable(true)
@@ -408,7 +430,7 @@ private struct StartScreenView: View {
             isVolumeFocused = false
             hideHUDWorkItem?.cancel()
         }
-        .onChange(of: crownVolumeValue) { newValue in
+        .onChange(of: crownVolumeValue) { _, newValue in
             handleCrownChange(newValue)
         }
     }
@@ -442,30 +464,33 @@ private struct StartScreenView: View {
 
 private struct VolumeHUDView: View {
     let volume: Double
+    let scale: CGFloat
 
     var body: some View {
         let clamped = max(0, min(1, volume))
+        let size = 58 * scale
+        let lineWidth = 6 * scale
         ZStack {
             Circle()
                 .fill(Color.black.opacity(0.55))
-                .frame(width: 58, height: 58)
+                .frame(width: size, height: size)
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.15), lineWidth: 6)
+                        .stroke(Color.white.opacity(0.15), lineWidth: lineWidth)
                 )
-                .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.35), radius: 6 * scale, x: 0, y: 3 * scale)
 
             Circle()
                 .trim(from: 0, to: clamped)
                 .stroke(
                     LinearGradient(colors: [.cyan, .pink], startPoint: .leading, endPoint: .trailing),
-                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
-                .frame(width: 58, height: 58)
+                .frame(width: size, height: size)
                 .rotationEffect(.degrees(-90))
 
             Image(systemName: clamped > 0.66 ? "speaker.wave.3.fill" : clamped > 0.33 ? "speaker.wave.2.fill" : (clamped > 0.05 ? "speaker.wave.1.fill" : "speaker.slash.fill"))
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 18 * scale, weight: .semibold))
                 .foregroundColor(.white)
         }
         .accessibilityLabel("Music volume")
@@ -556,15 +581,67 @@ private struct HighScoreCelebrationView: View {
     }
 }
 
+private struct ScoreBlock: View {
+    let lastScore: Int?
+    let highScore: Int
+    let scale: CGFloat
+
+    private var hasLast: Bool {
+        if let lastScore {
+            return lastScore > 0
+        }
+        return false
+    }
+
+    var body: some View {
+        ViewThatFits(in: .vertical) {
+            VStack(spacing: scaled(6)) {
+                if let lastScore, hasLast {
+                    ScoreBadge(label: "Last", value: lastScore, scale: scale)
+                }
+                ScoreBadge(label: "High", value: highScore, scale: scale)
+            }
+            .frame(maxWidth: .infinity)
+
+            HStack(spacing: scaled(8)) {
+                if let lastScore, hasLast {
+                    ScoreBadge(label: "Last", value: lastScore, scale: scale)
+                }
+                ScoreBadge(label: "High", value: highScore, scale: scale)
+            }
+            .frame(maxWidth: .infinity)
+
+            compactLine
+        }
+    }
+
+    private var compactLine: some View {
+        let text = hasLast ? "Last \(lastScore ?? 0) | High \(highScore)" : "High \(highScore)"
+        return Text(text)
+            .font(.system(size: 18 * scale, weight: .semibold))
+            .foregroundColor(.white.opacity(0.9))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func scaled(_ value: CGFloat) -> CGFloat {
+        value * scale
+    }
+}
+
 private struct ScoreBadge: View {
     let label: String
     let value: Int
+    let scale: CGFloat
 
     var body: some View {
         Text("\(label): \(value)")
-            .font(.footnote)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .font(.system(size: 16 * scale, weight: .semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .padding(.horizontal, 16 * scale)
+            .padding(.vertical, 7 * scale)
             .background(
                 Capsule()
                     .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
@@ -580,10 +657,11 @@ private struct ScoreBadge: View {
 
 private struct NeonTitle: View {
     let text: String
+    let scale: CGFloat
 
     var body: some View {
         let upper = text.uppercased()
-        let baseFont = Font.system(size: 40, weight: .black, design: .rounded)
+        let baseFont = Font.system(size: 44 * scale, weight: .black, design: .rounded)
         let base = Text(upper)
             .font(baseFont)
             .kerning(1.1)
@@ -623,6 +701,12 @@ private struct SettingsView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let metrics = OverlayMetrics(size: proxy.size)
+            let cardPadding = metrics.scaled(12)
+            let cardCornerRadius = metrics.scaled(12)
+            let sectionSpacing = metrics.scaled(12)
+            let horizontalPadding = metrics.scaled(14)
+            let topPadding = metrics.scaled(6)
             ZStack {
                 Color.black.opacity(0.85).ignoresSafeArea()
                 LinearGradient(
@@ -633,8 +717,8 @@ private struct SettingsView: View {
                 .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 14) {
-                        VStack(spacing: 10) {
+                    VStack(spacing: sectionSpacing) {
+                        VStack(spacing: metrics.scaled(8)) {
                             Toggle(isOn: $soundEnabled) {
                                 Label("Sound", systemImage: "speaker.wave.2.fill")
                                     .foregroundColor(.white)
@@ -653,18 +737,18 @@ private struct SettingsView: View {
                             }
                             .tint(.cyan)
                         }
-                        .padding()
+                        .padding(cardPadding)
                             .background(
-                                RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: cardCornerRadius)
                                     .fill(Color.white.opacity(0.08))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
+                                        RoundedRectangle(cornerRadius: cardCornerRadius)
                                         .stroke(Color.white.opacity(0.1), lineWidth: 1)
                                 )
                         )
 
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 6) {
+                        VStack(alignment: .leading, spacing: metrics.scaled(8)) {
+                            HStack(spacing: metrics.scaled(6)) {
                                 Image(systemName: "speedometer")
                                     .foregroundColor(.white)
                                 Text("Difficulty")
@@ -672,20 +756,20 @@ private struct SettingsView: View {
                                 Spacer()
                             }
 
-                            DifficultySelector(selection: $difficulty)
+                            DifficultySelector(selection: $difficulty, scale: metrics.scale)
                         }
-                        .padding()
+                        .padding(cardPadding)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: cardCornerRadius)
                                 .fill(Color.white.opacity(0.08))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
+                                    RoundedRectangle(cornerRadius: cardCornerRadius)
                                     .stroke(Color.white.opacity(0.1), lineWidth: 1)
                                 )
                         )
 
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 6) {
+                        VStack(alignment: .leading, spacing: metrics.scaled(8)) {
+                            HStack(spacing: metrics.scaled(6)) {
                                 Image(systemName: "dial.medium")
                                     .foregroundColor(.white)
                                 VStack(alignment: .leading, spacing: -2) {
@@ -695,7 +779,7 @@ private struct SettingsView: View {
                                 .foregroundColor(.white)
                                 Spacer()
                                 Text(sensitivityLabel)
-                                    .font(.footnote)
+                                    .font(.system(size: 12 * metrics.scale))
                                     .foregroundColor(.white.opacity(0.8))
                             }
 
@@ -706,25 +790,25 @@ private struct SettingsView: View {
                             )
                             .tint(.orange)
                         }
-                        .padding()
+                        .padding(cardPadding)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
+                            RoundedRectangle(cornerRadius: cardCornerRadius)
                                 .fill(Color.white.opacity(0.08))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
+                                    RoundedRectangle(cornerRadius: cardCornerRadius)
                                     .stroke(Color.white.opacity(0.1), lineWidth: 1)
                                 )
                         )
 
                         Text("Game by Bird Disk")
-                            .font(.footnote)
+                            .font(.system(size: 16 * metrics.scale, weight: .semibold))
                             .foregroundColor(.white.opacity(0.7))
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .frame(maxWidth: .infinity, alignment: .top)
-                    .padding(.horizontal, 14)
-                    .padding(.top, max(0, proxy.safeAreaInsets.top - 2))
-                    .padding(.bottom, 18)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, topPadding)
+                    .padding(.bottom, metrics.scaled(16))
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             }
@@ -734,6 +818,7 @@ private struct SettingsView: View {
 
 private struct DifficultySelector: View {
     @Binding var selection: GameDifficulty
+    let scale: CGFloat
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -745,11 +830,11 @@ private struct DifficultySelector: View {
     @ViewBuilder
     private func optionRow(horizontal: Bool) -> some View {
         if horizontal {
-            HStack(spacing: 6) {
+            HStack(spacing: 6 * scale) {
                 options
             }
         } else {
-            VStack(spacing: 6) {
+            VStack(spacing: 6 * scale) {
                 options
             }
         }
@@ -759,7 +844,8 @@ private struct DifficultySelector: View {
         ForEach(GameDifficulty.allCases) { difficulty in
             DifficultyOptionButton(
                 title: difficulty.displayName,
-                isSelected: difficulty == selection
+                isSelected: difficulty == selection,
+                scale: scale
             ) {
                 selection = difficulty
             }
@@ -770,23 +856,24 @@ private struct DifficultySelector: View {
 private struct DifficultyOptionButton: View {
     let title: String
     let isSelected: Bool
+    let scale: CGFloat
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.footnote.weight(.semibold))
+                .font(.system(size: 14 * scale, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7 * scale)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 8 * scale)
                         .fill(isSelected ? Color.cyan.opacity(0.35) : Color.white.opacity(0.08))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 8 * scale)
                         .stroke(Color.white.opacity(isSelected ? 0.65 : 0.2), lineWidth: 1)
                 )
         }

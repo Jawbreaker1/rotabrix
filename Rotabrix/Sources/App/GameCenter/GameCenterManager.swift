@@ -1,5 +1,6 @@
 import Foundation
 import GameKit
+import Combine
 
 @MainActor
 final class GameCenterManager: ObservableObject {
@@ -66,16 +67,16 @@ final class GameCenterManager: ObservableObject {
 
     func authenticateIfNeeded() {
         guard isEnabled else { return }
+        let localPlayer = GKLocalPlayer.local
 
-        if GKLocalPlayer.local.isAuthenticated {
+        if localPlayer.isAuthenticated {
             updateAuthenticationState(error: nil, needsSignIn: false)
             return
         }
 
-        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
+        localPlayer.authenticateHandler = { [weak self] error in
             Task { @MainActor in
-                let needsSignIn = viewController != nil
-                self?.updateAuthenticationState(error: error, needsSignIn: needsSignIn)
+                self?.updateAuthenticationState(error: error, needsSignIn: true)
             }
         }
     }
@@ -94,9 +95,10 @@ final class GameCenterManager: ObservableObject {
         loadLeaderboard()
     }
 
-    func submitScore(_ score: Int, leaderboardID: String = GameCenterConfig.primaryLeaderboardID) {
+    func submitScore(_ score: Int) {
         guard isEnabled else { return }
         guard score > 0 else { return }
+        let leaderboardID = GameCenterConfig.primaryLeaderboardID
 
         guard isAuthenticated else {
             queuePendingScore(score, leaderboardID: leaderboardID)
@@ -140,34 +142,49 @@ final class GameCenterManager: ObservableObject {
         leaderboardState = .loading
         let context = selectedContext
 
-        let leaderboard = GKLeaderboard()
-        leaderboard.identifier = context.leaderboardID
-        leaderboard.playerScope = context.playerScope
-        leaderboard.timeScope = context.timeScope
-        leaderboard.range = leaderboardRange
-
-        leaderboard.loadEntries { [weak self] localEntry, entries, _, error in
-            Task { @MainActor in
-                guard let self else { return }
+        GKLeaderboard.loadLeaderboards(IDs: [context.leaderboardID]) { [weak self] leaderboards, error in
+            Task { @MainActor [weak self] in
+                guard let self = self else { return }
                 if let error {
                     self.leaderboardState = .error(error.localizedDescription)
                     return
                 }
+                guard let leaderboard = leaderboards?.first else {
+                    self.leaderboardState = .error("Leaderboard not found.")
+                    return
+                }
 
-                let mappedEntries = entries?.map { self.mapEntry($0) } ?? []
-                self.leaderboardEntries = mappedEntries
-                self.localEntry = localEntry.map { self.mapEntry($0) }
-                self.leaderboardState = .loaded
+                leaderboard.loadEntries(
+                    for: context.playerScope,
+                    timeScope: context.timeScope,
+                    range: self.leaderboardRange
+                ) { localEntry, entries, _, error in
+                    Task { @MainActor [weak self] in
+                        guard let self = self else { return }
+                        if let error {
+                            self.leaderboardState = .error(error.localizedDescription)
+                            return
+                        }
+
+                        let localRank = localEntry?.rank
+                        let mappedEntries = entries?.map {
+                            self.mapEntry($0, localRank: localRank)
+                        } ?? []
+                        self.leaderboardEntries = mappedEntries
+                        self.localEntry = localEntry.map { self.mapEntry($0, localRank: $0.rank) }
+                        self.leaderboardState = .loaded
+                    }
+                }
             }
         }
     }
 
-    private func mapEntry(_ entry: GKLeaderboard.Entry) -> LeaderboardEntry {
-        let playerID = entry.player.gamePlayerID
+    private func mapEntry(_ entry: GKLeaderboard.Entry, localRank: Int?) -> LeaderboardEntry {
         let displayName = entry.player.displayName
-        let isLocal = playerID == GKLocalPlayer.local.gamePlayerID
+        let id = "\(entry.rank)-\(displayName)"
+        let isLocal = localRank.map { $0 == entry.rank } ?? false
         return LeaderboardEntry(
-            id: playerID,
+            id: id,
             rank: entry.rank,
             score: Int(entry.score),
             displayName: displayName,
@@ -206,9 +223,13 @@ final class GameCenterManager: ObservableObject {
     }
 
     private func reportScore(_ score: Int, leaderboardID: String, completion: @escaping (Error?) -> Void) {
-        let reporter = GKScore(leaderboardIdentifier: leaderboardID)
-        reporter.value = Int64(score)
-        GKScore.report([reporter]) { error in
+        let localPlayer = GKLocalPlayer.local
+        GKLeaderboard.submitScore(
+            score,
+            context: 0,
+            player: localPlayer,
+            leaderboardIDs: [leaderboardID]
+        ) { error in
             completion(error)
         }
     }
